@@ -94,26 +94,20 @@ app.use((req, res) => {
   });
 });
 
-// Export app for Vercel serverless function
-export default app;
-
-// Only start server if not in Vercel environment
-if (!process.env.VERCEL) {
-  app.listen(PORT, async () => {
-    console.log(`🚀 Server is running on port ${PORT}`);
-    console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
-    
-    // Test Supabase connection if credentials are provided
-    if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      try {
-        const { testSupabaseConnection } = await import('./config/supabase');
-        await testSupabaseConnection();
-      } catch (error: any) {
-        console.log('⚠️  Supabase connection failed:', error?.message || error);
-      }
-    } else {
-      console.log('⚠️  Supabase credentials not found');
+app.listen(PORT, async () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
+  
+  // Test Supabase connection if credentials are provided
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const { testSupabaseConnection } = await import('./config/supabase');
+      await testSupabaseConnection();
+    } catch (error: any) {
+      console.log('⚠️  Supabase connection failed:', error?.message || error);
     }
-  });
-}
+  } else {
+    console.log('⚠️  Supabase credentials not found');
+  }
+});
 
