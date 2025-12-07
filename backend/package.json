@@ -6,9 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "npm install && tsc",
+    "build": "tsc",
     "start": "node dist/server.js",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "vercel-build": "npm run build"
   },
   "keywords": [
     "api",
