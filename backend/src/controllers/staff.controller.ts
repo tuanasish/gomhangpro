@@ -344,4 +344,3 @@ export async function deleteStaff(req: Request<{ id: string }>, res: Response<Ap
     });
   }
 }
-

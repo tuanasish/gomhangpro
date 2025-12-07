@@ -79,4 +79,3 @@ WHERE email = '${email}';
 }
 
 generateAdminSQL().catch(console.error);
-

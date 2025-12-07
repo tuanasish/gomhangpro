@@ -22,4 +22,3 @@ const NotificationContainer: React.FC = () => {
 };
 
 export default NotificationContainer;
-

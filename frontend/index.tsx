@@ -15,8 +15,3 @@ root.render(
     <App />
   </React.StrictMode>
 );
-
-// Register Service Worker for PWA (chỉ khi không phải dev mode)
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  registerServiceWorker();
-}

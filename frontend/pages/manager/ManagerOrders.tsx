@@ -19,6 +19,19 @@ const ManagerOrdersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [approvingOrderId, setApprovingOrderId] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Form state cho sửa hóa đơn
+  const [editFormData, setEditFormData] = useState({
+    tienHang: 0,
+    tienCongGom: 0,
+    phiDongHang: 0,
+    tienHoaHong: 0,
+    tienThem: 0,
+    loaiTienThem: '',
+  });
 
   // Filter states
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
@@ -147,6 +160,81 @@ const ManagerOrdersPage: React.FC = () => {
       showError(err.message || 'Không thể hủy đơn hàng. Vui lòng thử lại.');
     } finally {
       setApprovingOrderId(null);
+    }
+  };
+
+  const handleOpenEditModal = (order: Order) => {
+    setEditingOrder(order);
+    setEditFormData({
+      tienHang: order.tienHang,
+      tienCongGom: order.tienCongGom,
+      phiDongHang: order.phiDongHang,
+      tienHoaHong: order.tienHoaHong || 0,
+      tienThem: order.tienThem || 0,
+      loaiTienThem: order.loaiTienThem || '',
+    });
+    setError(null);
+    setShowEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingOrder(null);
+    setEditFormData({
+      tienHang: 0,
+      tienCongGom: 0,
+      phiDongHang: 0,
+      tienHoaHong: 0,
+      tienThem: 0,
+      loaiTienThem: '',
+    });
+    setError(null);
+  };
+
+  const handleSaveOrder = async () => {
+    if (!editingOrder) return;
+
+    // Validation
+    if (editFormData.tienHang <= 0) {
+      setError('Tiền hàng phải lớn hơn 0');
+      return;
+    }
+
+    // Nếu có tienThem > 0 nhưng chưa nhập loaiTienThem
+    if (editFormData.tienThem > 0 && !editFormData.loaiTienThem.trim()) {
+      if (!confirm('Bạn chưa nhập loại tiền thêm. Bạn có muốn tiếp tục không?')) {
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    setError(null);
+    try {
+      const updateData: any = {
+        tienHang: editFormData.tienHang,
+        tienCongGom: editFormData.tienCongGom,
+        phiDongHang: editFormData.phiDongHang,
+        tienHoaHong: editFormData.tienHoaHong || 0,
+      };
+
+      // Chỉ gửi tienThem và loaiTienThem nếu được nhập
+      if (editFormData.tienThem !== undefined && editFormData.tienThem > 0) {
+        updateData.tienThem = editFormData.tienThem;
+        updateData.loaiTienThem = editFormData.loaiTienThem.trim() || null;
+      } else {
+        updateData.tienThem = 0;
+        updateData.loaiTienThem = null;
+      }
+
+      await ordersService.updateOrder(editingOrder.id, updateData);
+      showSuccess('Sửa hóa đơn thành công');
+      await loadOrders();
+      handleCloseEditModal();
+    } catch (err: any) {
+      console.error('Save order error:', err);
+      setError(err.message || 'Lỗi sửa hóa đơn. Vui lòng thử lại.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -363,6 +451,14 @@ const ManagerOrdersPage: React.FC = () => {
                                   >
                                     Xem
                                   </button>
+                                  {user?.role === 'admin' && (
+                                    <button
+                                      onClick={() => handleOpenEditModal(order)}
+                                      className="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                    >
+                                      Sửa
+                                    </button>
+                                  )}
                                   {order.status === 'pending' && (
                                     <>
                                       <button
@@ -427,26 +523,34 @@ const ManagerOrdersPage: React.FC = () => {
                               <p className="text-gray-900 dark:text-white font-bold">{formatCurrency(order.tongTienHoaDon)}</p>
                             </div>
                           </div>
-                          <div className="mt-4 flex gap-2">
+                          <div className="mt-4 flex gap-2 flex-wrap">
                             <button
                               onClick={() => handleViewOrder(order.id)}
-                              className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-primary-light text-primary-dark dark:bg-primary/20 dark:text-primary-light text-sm font-bold hover:bg-primary/20 transition-colors"
+                              className="flex-1 min-w-[100px] flex items-center justify-center h-10 px-4 rounded-lg bg-primary-light text-primary-dark dark:bg-primary/20 dark:text-primary-light text-sm font-bold hover:bg-primary/20 transition-colors"
                             >
                               Xem chi tiết
                             </button>
+                            {user?.role === 'admin' && (
+                              <button
+                                onClick={() => handleOpenEditModal(order)}
+                                className="flex-1 min-w-[100px] flex items-center justify-center h-10 px-4 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 text-sm font-bold hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                              >
+                                Sửa
+                              </button>
+                            )}
                             {order.status === 'pending' && (
                               <>
                                 <button
                                   onClick={() => handleApproveOrder(order.id)}
                                   disabled={approvingOrderId === order.id}
-                                  className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 text-sm font-bold hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="flex-1 min-w-[100px] flex items-center justify-center h-10 px-4 rounded-lg bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 text-sm font-bold hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   {approvingOrderId === order.id ? 'Đang xử lý...' : 'Duyệt'}
                                 </button>
                                 <button
                                   onClick={() => handleCancelOrder(order.id)}
                                   disabled={approvingOrderId === order.id}
-                                  className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="flex-1 min-w-[100px] flex items-center justify-center h-10 px-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   Hủy
                                 </button>
@@ -463,6 +567,173 @@ const ManagerOrdersPage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Edit Order Modal */}
+      {showEditModal && editingOrder && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+          onClick={handleCloseEditModal}
+        >
+          <div 
+            className="bg-white dark:bg-[#111827] rounded-xl p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Sửa hóa đơn</h2>
+              <button
+                onClick={handleCloseEditModal}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 -mr-2"
+                disabled={isSaving}
+              >
+                <span className="material-symbols-outlined text-2xl">close</span>
+              </button>
+            </div>
+            
+            {error && (
+              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 mb-4">
+                <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {/* Order Info */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Mã đơn</p>
+                <p className="text-base font-semibold text-gray-900 dark:text-white">#{editingOrder.id.slice(-8).toUpperCase()}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-1">Khách hàng</p>
+                <p className="text-base font-semibold text-gray-900 dark:text-white">{editingOrder.customerName || 'N/A'}</p>
+              </div>
+
+              {/* Money Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Tiền hàng (VNĐ) *
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={editFormData.tienHang}
+                    onChange={(e) => setEditFormData({ ...editFormData, tienHang: parseFloat(e.target.value) || 0 })}
+                    className="form-input w-full rounded-lg text-gray-900 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary h-12 px-4 text-base"
+                    disabled={isSaving}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Tiền công gom (VNĐ)
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={editFormData.tienCongGom}
+                    onChange={(e) => setEditFormData({ ...editFormData, tienCongGom: parseFloat(e.target.value) || 0 })}
+                    className="form-input w-full rounded-lg text-gray-900 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary h-12 px-4 text-base"
+                    disabled={isSaving}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Phí đóng hàng (VNĐ)
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={editFormData.phiDongHang}
+                    onChange={(e) => setEditFormData({ ...editFormData, phiDongHang: parseFloat(e.target.value) || 0 })}
+                    className="form-input w-full rounded-lg text-gray-900 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary h-12 px-4 text-base"
+                    disabled={isSaving}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Tiền hoa hồng (VNĐ)
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={editFormData.tienHoaHong}
+                    onChange={(e) => setEditFormData({ ...editFormData, tienHoaHong: parseFloat(e.target.value) || 0 })}
+                    className="form-input w-full rounded-lg text-gray-900 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary h-12 px-4 text-base"
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+
+              {/* Additional Money Fields */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Tiền thêm</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Loại tiền (Ghi chú)
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.loaiTienThem}
+                      onChange={(e) => setEditFormData({ ...editFormData, loaiTienThem: e.target.value })}
+                      placeholder="VD: Gửi xe, Phí khác..."
+                      className="form-input w-full rounded-lg text-gray-900 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary h-12 px-4 text-base"
+                      disabled={isSaving}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Số tiền thêm (VNĐ)
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={editFormData.tienThem}
+                      onChange={(e) => setEditFormData({ ...editFormData, tienThem: parseFloat(e.target.value) || 0 })}
+                      className="form-input w-full rounded-lg text-gray-900 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary h-12 px-4 text-base"
+                      disabled={isSaving}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Preview */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Tổng tiền hóa đơn</p>
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    {(
+                      editFormData.tienHang + 
+                      editFormData.tienCongGom + 
+                      editFormData.phiDongHang + 
+                      (editFormData.tienHoaHong || 0) + 
+                      (editFormData.tienThem || 0)
+                    ).toLocaleString('vi-VN')}đ
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleCloseEditModal}
+                  className="flex-1 h-12 px-4 rounded-lg border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isSaving}
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveOrder}
+                  className="flex-1 h-12 px-4 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  ) : (
+                    'Lưu thay đổi'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <BottomNavAdmin />
     </div>

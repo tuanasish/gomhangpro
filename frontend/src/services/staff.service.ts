@@ -91,4 +91,3 @@ export async function deleteStaff(staffId: string): Promise<void> {
     throw error;
   }
 }
-

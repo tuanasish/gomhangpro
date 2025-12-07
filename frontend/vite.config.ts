@@ -153,7 +153,11 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
-        }
+        },
+        extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
+      },
+      optimizeDeps: {
+        include: ['@react-pdf/renderer'],
       },
       build: {
         rollupOptions: {

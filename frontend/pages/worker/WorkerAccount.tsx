@@ -155,4 +155,3 @@ const WorkerAccountPage: React.FC = () => {
 };
 
 export default WorkerAccountPage;
-

@@ -8,7 +8,7 @@ import * as countersService from '../../src/services/counters.service';
 import { Customer } from '../../src/services/customers.service';
 import { Counter } from '../../src/services/counters.service';
 
-const CreateOrderPage: React.FC = () => {
+const CreateOrderPage: () => React.JSX.Element = () => {
   const navigate = useNavigate();
 
   // State cho shift

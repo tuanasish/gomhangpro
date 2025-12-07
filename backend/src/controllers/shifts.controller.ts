@@ -7,6 +7,9 @@ import { supabase } from '../config/supabase.js';
  */
 export async function getShiftsList(req: Request, res: Response<ApiResponse<Shift[]>>): Promise<void> {
   try {
+    // Auto-reset các ca đã hết hạn trước khi lấy danh sách
+    await autoResetExpiredShifts();
+
     const { staffId, date, status } = req.query;
     
     let query = supabase
@@ -127,6 +130,9 @@ export async function getShiftById(req: Request<{ id: string }>, res: Response<A
  */
 export async function getCurrentShift(req: Request, res: Response<ApiResponse<Shift>>): Promise<void> {
   try {
+    // Auto-reset các ca đã hết hạn trước khi lấy ca hiện tại
+    await autoResetExpiredShifts();
+
     const userId = (req as any).user?.userId;
     
     if (!userId) {
@@ -423,7 +429,53 @@ export async function startShift(req: Request<{ id: string }>, res: Response<Api
 }
 
 /**
- * Kết thúc ca (worker) - số dư cuối ca = tiền giao ca - tổng tiền hàng đã trả
+ * Auto-reset tiền cho các ca chưa kết thúc sau 12h đêm
+ * Gọi function này trước khi lấy danh sách ca hoặc ca hiện tại
+ */
+async function autoResetExpiredShifts(): Promise<void> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to beginning of today
+  const todayISO = today.toISOString().split('T')[0];
+
+  // Tìm các ca active có date < today (ca của ngày hôm qua hoặc trước đó)
+  const { data: expiredShifts, error } = await supabase
+    .from('shifts')
+    .select('id, date')
+    .eq('status', 'active')
+    .lt('date', todayISO); // Shifts with date < today
+
+  if (error) {
+    console.error('Error fetching expired shifts:', error);
+    return;
+  }
+
+  if (expiredShifts && expiredShifts.length > 0) {
+    const shiftIdsToUpdate = expiredShifts.map(shift => shift.id);
+    console.log(`Auto-resetting ${shiftIdsToUpdate.length} expired shifts.`);
+
+    // Reset tiền về 0 và kết thúc ca
+    const { error: updateError } = await supabase
+      .from('shifts')
+      .update({
+        tien_giao_ca: 0,
+        tong_tien_hang_da_tra: 0,
+        quy_con_lai: 0,
+        status: 'ended',
+        end_time: new Date().toISOString(), // End at current time
+        updated_at: new Date().toISOString(),
+      })
+      .in('id', shiftIdsToUpdate);
+
+    if (updateError) {
+      console.error('Error auto-resetting expired shifts:', updateError);
+    } else {
+      console.log(`Successfully auto-reset ${shiftIdsToUpdate.length} shifts.`);
+    }
+  }
+}
+
+/**
+ * Kết thúc ca (chỉ admin) - số dư cuối ca = tiền giao ca - tổng tiền hàng đã trả
  */
 export async function endShift(
   req: Request<{ id: string }, ApiResponse<Shift>, {}>,
@@ -432,11 +484,21 @@ export async function endShift(
   try {
     const { id } = req.params;
     const userId = (req as any).user?.userId;
+    const userRole = (req as any).user?.role;
 
     if (!userId) {
       res.status(401).json({
         success: false,
         error: 'Chưa đăng nhập',
+      });
+      return;
+    }
+
+    // Chỉ admin mới có quyền kết thúc ca
+    if (userRole !== 'admin') {
+      res.status(403).json({
+        success: false,
+        error: 'Chỉ admin mới có quyền kết thúc ca',
       });
       return;
     }
@@ -452,14 +514,6 @@ export async function endShift(
       res.status(404).json({
         success: false,
         error: 'Không tìm thấy ca làm việc',
-      });
-      return;
-    }
-
-    if (shift.staff_id !== userId) {
-      res.status(403).json({
-        success: false,
-        error: 'Bạn không có quyền kết thúc ca này',
       });
       return;
     }
@@ -617,4 +671,3 @@ export async function addMoneyToShift(req: Request, res: Response<ApiResponse<Sh
     });
   }
 }
-

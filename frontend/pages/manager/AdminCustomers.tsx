@@ -440,4 +440,3 @@ const AdminCustomersPage: React.FC = () => {
 };
 
 export default AdminCustomersPage;
-

@@ -54,4 +54,3 @@ router.put('/:id', authenticate, authorize('worker', 'manager', 'admin'), update
 router.delete('/:id', authenticate, authorize('manager', 'admin'), deleteOrder);
 
 export default router;
-

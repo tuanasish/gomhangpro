@@ -89,4 +89,3 @@ const BottomNavAdmin: React.FC = () => {
 };
 
 export default BottomNavAdmin;
-

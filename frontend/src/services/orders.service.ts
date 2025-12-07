@@ -15,6 +15,8 @@ export interface Order {
   phiDongHang: number;
   tienHoaHong: number;
   tongTienHoaDon: number;
+  tienThem?: number;
+  loaiTienThem?: string;
   status: 'pending' | 'completed' | 'cancelled';
   createdAt: Date;
   updatedAt: Date;
@@ -39,6 +41,8 @@ export interface UpdateOrderRequest {
   tienCongGom?: number;
   phiDongHang?: number;
   tienHoaHong?: number;
+  tienThem?: number;
+  loaiTienThem?: string;
 }
 
 /**
@@ -128,4 +132,3 @@ export async function deleteOrder(orderId: string): Promise<void> {
     throw new Error(response.data.error || 'Không thể xóa đơn hàng');
   }
 }
-

@@ -201,16 +201,6 @@ const WorkerHomePage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* End Shift Button */}
-                  <div className="flex px-4 pt-8 pb-4">
-                    <button
-                      onClick={() => navigate(RoutePath.WORKER_END_SHIFT)}
-                      className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 flex-1 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 gap-2 text-base font-bold leading-normal tracking-[0.015em] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-2xl">logout</span>
-                      <span className="truncate">Kết ca & Báo cáo</span>
-                    </button>
-                  </div>
                 </>
               )}
 

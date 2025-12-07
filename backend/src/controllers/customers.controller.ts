@@ -265,4 +265,3 @@ export async function deleteCustomer(req: Request<{ id: string }>, res: Response
     });
   }
 }
-

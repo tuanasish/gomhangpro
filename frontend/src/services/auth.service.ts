@@ -127,4 +127,3 @@ export async function getCurrentUser(forceRefresh = false): Promise<LoginRespons
 export function isAuthenticated(): boolean {
   return !!getAccessToken();
 }
-

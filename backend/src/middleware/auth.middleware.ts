@@ -93,4 +93,3 @@ export function authorize(...allowedRoles: ('worker' | 'manager' | 'admin')[]) {
     next();
   };
 }
-

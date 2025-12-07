@@ -64,6 +64,8 @@ export async function getOrdersList(req: Request, res: Response<ApiResponse<Orde
         tienCongGom: parseFloat(order.tien_cong_gom),
         phiDongHang: parseFloat(order.phi_dong_hang),
         tienHoaHong: parseFloat(order.tien_hoa_hong || 0),
+        tienThem: order.tien_them ? parseFloat(order.tien_them) : undefined,
+        loaiTienThem: order.loai_tien_them || undefined,
         tongTienHoaDon: parseFloat(order.tong_tien_hoa_don),
         status: order.status,
         createdAt: new Date(order.created_at),
@@ -120,6 +122,8 @@ export async function getOrderById(req: Request<{ id: string }>, res: Response<A
         tienCongGom: parseFloat(order.tien_cong_gom),
         phiDongHang: parseFloat(order.phi_dong_hang),
         tienHoaHong: parseFloat(order.tien_hoa_hong || 0),
+        tienThem: order.tien_them ? parseFloat(order.tien_them) : undefined,
+        loaiTienThem: order.loai_tien_them || undefined,
         tongTienHoaDon: parseFloat(order.tong_tien_hoa_don),
         status: order.status,
         createdAt: new Date(order.created_at),
@@ -177,6 +181,8 @@ export async function getOrdersByShift(req: Request<{ shiftId: string }>, res: R
         tienCongGom: parseFloat(order.tien_cong_gom),
         phiDongHang: parseFloat(order.phi_dong_hang),
         tienHoaHong: parseFloat(order.tien_hoa_hong || 0),
+        tienThem: order.tien_them ? parseFloat(order.tien_them) : undefined,
+        loaiTienThem: order.loai_tien_them || undefined,
         tongTienHoaDon: parseFloat(order.tong_tien_hoa_don),
         status: order.status,
         createdAt: new Date(order.created_at),
@@ -445,13 +451,29 @@ export async function updateOrder(
       tienCongGom?: number;
       phiDongHang?: number;
       tienHoaHong?: number;
+      tienThem?: number;
+      loaiTienThem?: string;
     }
   >,
   res: Response
 ): Promise<void> {
   try {
     const { id } = req.params;
-    const { status, tienHang, tienCongGom, phiDongHang, tienHoaHong } = req.body;
+    const { status, tienHang, tienCongGom, phiDongHang, tienHoaHong, tienThem, loaiTienThem } = req.body;
+    const userRole = (req as any).user?.role;
+
+    // Chỉ admin mới có quyền sửa các trường tiền
+    const isEditingMoneyFields = tienHang !== undefined || tienCongGom !== undefined || 
+                                  phiDongHang !== undefined || tienHoaHong !== undefined || 
+                                  tienThem !== undefined || loaiTienThem !== undefined;
+    
+    if (isEditingMoneyFields && userRole !== 'admin') {
+      res.status(403).json({
+        success: false,
+        error: 'Chỉ admin mới có quyền sửa các trường tiền trong hóa đơn',
+      });
+      return;
+    }
 
     // Lấy đơn hàng hiện tại
     const { data: existingOrder, error: orderError } = await supabase
@@ -474,12 +496,17 @@ export async function updateOrder(
     if (tienCongGom !== undefined) updateData.tien_cong_gom = tienCongGom;
     if (phiDongHang !== undefined) updateData.phi_dong_hang = phiDongHang;
     if (tienHoaHong !== undefined) updateData.tien_hoa_hong = tienHoaHong;
+    if (tienThem !== undefined) updateData.tien_them = tienThem;
+    if (loaiTienThem !== undefined) updateData.loai_tien_them = loaiTienThem || null;
 
     // Tính lại tong_tien_hoa_don nếu có thay đổi
     const finalTienHang = tienHang !== undefined ? tienHang : parseFloat(existingOrder.tien_hang);
     const finalTienCongGom = tienCongGom !== undefined ? tienCongGom : parseFloat(existingOrder.tien_cong_gom);
     const finalPhiDongHang = phiDongHang !== undefined ? phiDongHang : parseFloat(existingOrder.phi_dong_hang);
-    updateData.tong_tien_hoa_don = finalTienHang + finalTienCongGom + finalPhiDongHang;
+    const finalTienHoaHong = tienHoaHong !== undefined ? tienHoaHong : parseFloat(existingOrder.tien_hoa_hong || 0);
+    const finalTienThem = tienThem !== undefined ? (tienThem || 0) : parseFloat(existingOrder.tien_them || 0);
+    
+    updateData.tong_tien_hoa_don = finalTienHang + finalTienCongGom + finalPhiDongHang + finalTienHoaHong + finalTienThem;
 
     const { data: updatedOrder, error } = await supabase
       .from('orders')
@@ -517,6 +544,8 @@ export async function updateOrder(
         tienCongGom: parseFloat(updatedOrder.tien_cong_gom),
         phiDongHang: parseFloat(updatedOrder.phi_dong_hang),
         tienHoaHong: parseFloat(updatedOrder.tien_hoa_hong || 0),
+        tienThem: updatedOrder.tien_them ? parseFloat(updatedOrder.tien_them) : undefined,
+        loaiTienThem: updatedOrder.loai_tien_them || undefined,
         tongTienHoaDon: parseFloat(updatedOrder.tong_tien_hoa_don),
         status: updatedOrder.status,
         createdAt: new Date(updatedOrder.created_at),
@@ -608,4 +637,3 @@ export async function deleteOrder(req: Request<{ id: string }>, res: Response<Ap
     });
   }
 }
-

@@ -78,4 +78,3 @@ export function decodeToken(token: string): TokenPayload | null {
     return null;
   }
 }
-

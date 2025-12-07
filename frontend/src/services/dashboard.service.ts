@@ -1,8 +1,7 @@
 import apiClient from './api.service';
 import { ApiResponse } from './auth.service';
-import { getShiftsList } from './shifts.service';
+import { getShiftsList, Shift } from './shifts.service';
 import { getOrdersList } from './orders.service';
-import { Shift, Order } from './shifts.service';
 
 export interface DashboardStats {
   activeShifts: number;

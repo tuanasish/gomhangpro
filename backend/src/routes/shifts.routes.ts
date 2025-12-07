@@ -41,10 +41,10 @@ router.put('/:id/start', authenticate, authorize('worker'), startShift);
 
 /**
  * @route   PUT /api/shifts/:id/end
- * @desc    Kết thúc ca
- * @access  Private (Worker)
+ * @desc    Kết thúc ca (chỉ admin)
+ * @access  Private (Admin)
  */
-router.put('/:id/end', authenticate, authorize('worker'), endShift);
+router.put('/:id/end', authenticate, authorize('admin'), endShift);
 
 /**
  * @route   PUT /api/shifts/:id/add-money
@@ -54,4 +54,3 @@ router.put('/:id/end', authenticate, authorize('worker'), endShift);
 router.put('/:id/add-money', authenticate, authorize('manager', 'admin'), addMoneyToShift);
 
 export default router;
-

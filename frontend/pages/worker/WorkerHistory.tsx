@@ -244,4 +244,3 @@ const WorkerHistoryPage: React.FC = () => {
 };
 
 export default WorkerHistoryPage;
-

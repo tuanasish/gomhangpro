@@ -213,6 +213,23 @@ const AdminShiftsPage: React.FC = () => {
     }
   };
 
+  const handleEndShift = async (shiftId: string, staffName: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn kết thúc ca làm việc của ${staffName} không?`)) {
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await shiftsService.endShift(shiftId);
+      showSuccess(`Đã kết thúc ca của ${staffName}`);
+      await loadShifts();
+    } catch (err: any) {
+      console.error('End shift error:', err);
+      showError(err.message || 'Lỗi kết thúc ca');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('vi-VN');
@@ -457,13 +474,31 @@ const AdminShiftsPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex gap-2 justify-center">
-                          <button
-                            onClick={() => handleOpenAddMoneyModal(shift)}
-                            className="font-medium text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
-                            title="Cộng thêm tiền"
-                          >
-                            + Tiền
-                          </button>
+                          {shift.status === 'active' && (
+                            <button
+                              onClick={() => handleEndShift(shift.id, shift.staffName || 'N/A')}
+                              className="font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                              title="Kết thúc ca"
+                            >
+                              Kết thúc
+                            </button>
+                          )}
+                          {shift.status === 'active' ? (
+                            <button
+                              onClick={() => handleOpenAddMoneyModal(shift)}
+                              className="font-medium text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                              title="Cộng thêm tiền"
+                            >
+                              + Tiền
+                            </button>
+                          ) : (
+                            <span
+                              className="font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                              title="Ca đã kết thúc, không thể thêm tiền"
+                            >
+                              + Tiền
+                            </span>
+                          )}
                           <button
                             onClick={() => setSelectedShift(shift.id)}
                             className="font-medium text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-white"
@@ -531,12 +566,30 @@ const AdminShiftsPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex gap-2 mt-4">
-                    <button
-                      onClick={() => handleOpenAddMoneyModal(shift)}
-                      className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 text-sm font-bold hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-                    >
-                      + Thêm tiền
-                    </button>
+                    {shift.status === 'active' && (
+                      <button
+                        onClick={() => handleEndShift(shift.id, shift.staffName || 'N/A')}
+                        className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                      >
+                        Kết thúc
+                      </button>
+                    )}
+                    {shift.status === 'active' ? (
+                      <button
+                        onClick={() => handleOpenAddMoneyModal(shift)}
+                        className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 text-sm font-bold hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                      >
+                        + Thêm tiền
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600 text-sm font-bold cursor-not-allowed"
+                        title="Ca đã kết thúc, không thể thêm tiền"
+                      >
+                        + Thêm tiền
+                      </button>
+                    )}
                     <button
                       onClick={() => setSelectedShift(shift.id)}
                       className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-primary-light text-primary-dark dark:bg-primary/20 dark:text-primary-light text-sm font-bold hover:bg-primary/20 transition-colors"
@@ -737,4 +790,3 @@ const AdminShiftsPage: React.FC = () => {
 };
 
 export default AdminShiftsPage;
-

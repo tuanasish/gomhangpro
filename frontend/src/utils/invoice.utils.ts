@@ -13,6 +13,8 @@ export interface InvoiceData {
   tienCongGom: number;
   phiDongHang: number;
   tienHoaHong: number;
+  tienThem?: number;
+  loaiTienThem?: string;
   tongTienHoaDon: number;
   items?: Array<{
     description: string;
@@ -59,9 +61,9 @@ export function formatTime(date: Date | string): string {
  */
 export function getCompanyInfo() {
   return {
-    name: 'Gom Hàng Pro',
+    name: 'Gom Hang Ninh Hiep',
     address: 'Ninh Hiệp, Gia Lâm, Hà Nội',
-    phone: 'Hotline: 1900 xxxx',
+    phone: '0922238683',
     email: 'support@gomhangpro.com',
   };
 }

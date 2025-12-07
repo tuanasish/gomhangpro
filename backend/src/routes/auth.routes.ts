@@ -47,4 +47,3 @@ router.get('/me', authenticate, getCurrentUser);
 router.post('/logout', authenticate, logout);
 
 export default router;
-

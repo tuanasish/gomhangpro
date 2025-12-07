@@ -129,4 +129,3 @@ export async function addMoneyToShift(shiftId: string, amount: number): Promise<
 
   return response.data.data;
 }
-

@@ -48,16 +48,20 @@ const OrderDetailPage: React.FC = () => {
 
     setIsGeneratingPDF(true);
     try {
+      const orderDate = typeof order.createdAt === 'string' ? new Date(order.createdAt) : order.createdAt;
+      
       await generateInvoicePDF({
         orderId: order.id,
         customerName: order.customerName || 'N/A',
         counterName: order.counterName || 'N/A',
-        date: typeof order.createdAt === 'string' ? order.createdAt : order.createdAt.toISOString(),
-        time: formatDateTime(order.createdAt),
+        date: orderDate.toISOString(),
+        time: orderDate.toISOString(), // Pass ISO string, formatTime will parse it
         tienHang: order.tienHang,
         tienCongGom: order.tienCongGom,
         phiDongHang: order.phiDongHang,
-        tienHoaHong: order.tienHoaHong,
+        tienHoaHong: order.tienHoaHong || 0,
+        tienThem: order.tienThem,
+        loaiTienThem: order.loaiTienThem,
         tongTienHoaDon: order.tongTienHoaDon,
       });
     } catch (error) {
@@ -166,6 +170,17 @@ const OrderDetailPage: React.FC = () => {
                     </p>
                     <p className="text-gray-900 dark:text-white text-base font-normal leading-normal text-right">
                       {order.tienHoaHong.toLocaleString('vi-VN')}đ
+                    </p>
+                  </div>
+                )}
+                
+                {(order.tienThem !== undefined && order.tienThem !== null && order.tienThem > 0) && (
+                  <div className="flex justify-between gap-x-6 py-2.5 border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
+                    <p className="text-gray-500 dark:text-gray-400 text-base font-normal leading-normal">
+                      {order.loaiTienThem ? order.loaiTienThem : 'Tiền thêm'}
+                    </p>
+                    <p className="text-gray-900 dark:text-white text-base font-normal leading-normal text-right">
+                      {order.tienThem.toLocaleString('vi-VN')}đ
                     </p>
                   </div>
                 )}

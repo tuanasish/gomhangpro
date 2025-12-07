@@ -265,4 +265,3 @@ export async function deleteCounter(req: Request<{ id: string }>, res: Response<
     });
   }
 }
-

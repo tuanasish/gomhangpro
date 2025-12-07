@@ -33,4 +33,3 @@ router.put('/:id', authenticate, authorize('manager', 'admin'), updateStaff);
 router.delete('/:id', authenticate, authorize('admin'), deleteStaff);
 
 export default router;
-

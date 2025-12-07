@@ -40,4 +40,3 @@ router.put('/:id', authenticate, authorize('manager', 'admin'), updateCounter);
 router.delete('/:id', authenticate, authorize('manager', 'admin'), deleteCounter);
 
 export default router;
-

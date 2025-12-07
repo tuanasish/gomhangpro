@@ -417,4 +417,3 @@ const AdminCountersPage: React.FC = () => {
 };
 
 export default AdminCountersPage;
-
