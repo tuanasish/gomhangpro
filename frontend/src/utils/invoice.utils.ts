@@ -61,7 +61,7 @@ export function formatTime(date: Date | string): string {
  */
 export function getCompanyInfo() {
   return {
-    name: 'Gom Hang Ninh Hiep',
+    name: 'Quan Gom Hang Ninh Hiep',
     address: 'Ninh Hiệp, Gia Lâm, Hà Nội',
     phone: '0922238683',
     email: 'support@gomhangpro.com',
