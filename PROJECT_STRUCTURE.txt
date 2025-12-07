@@ -1,0 +1,50 @@
+Folder PATH listing for volume New Volume
+Volume serial number is 024F-9619
+E:.
+|   .env.local
+|   .gitignore
+|   package.json
+|   plan.txt
+|   PROJECT_STRUCTURE.txt
+|   README.md
+|   SETUP.md
+|   
++---backend
+|   |   .env.example
+|   |   .gitignore
+|   |   package.json
+|   |   README.md
+|   |   tsconfig.json
+|   |   
+|   \---src
+|       |   server.ts
+|       |   
+|       \---types
+|               index.ts
+|               
+\---frontend
+    |   App.tsx
+    |   index.html
+    |   index.tsx
+    |   metadata.json
+    |   package.json
+    |   README.md
+    |   tsconfig.json
+    |   types.ts
+    |   vite.config.ts
+    |   
+    \---pages
+        |   Login.tsx
+        |   RoleSelection.tsx
+        |   
+        +---manager
+        |       ManagerDashboard.tsx
+        |       ManagerOrders.tsx
+        |       
+        \---worker
+                CreateOrder.tsx
+                EndShift.tsx
+                OrderDetail.tsx
+                StartShift.tsx
+                WorkerHome.tsx
+                

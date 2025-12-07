@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.material-symbols-outlined.fill {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+}
+
+/* Performance optimizations */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Touch action optimization for mobile */
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+/* Minimum touch target size for mobile accessibility (44x44px) */
+@media (max-width: 768px) {
+  /* Chỉ áp dụng min-height cho buttons không có inline style height */
+  button:not([style*="height"]),
+  a:not([style*="height"]),
+  input[type="button"]:not([style*="height"]),
+  input[type="submit"]:not([style*="height"]),
+  [role="button"]:not([style*="height"]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Icon buttons should have padding to meet touch target */
+  button:has(.material-symbols-outlined):not([style*="height"]),
+  a:has(.material-symbols-outlined):not([style*="height"]) {
+    padding: 0.75rem;
+  }
+  
+  /* Đảm bảo buttons có inline style height được ưu tiên */
+  button[style*="height"],
+  a[style*="height"],
+  input[type="button"][style*="height"],
+  input[type="submit"][style*="height"] {
+    min-height: unset !important;
+    height: inherit !important;
+  }
+}
+
+/* Optimize scrolling containers */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto {
+  will-change: scroll-position;
+  transform: translateZ(0);
+}
+
+/* Safe area support */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+}
+
+/* Fix button height for login and other specific buttons */
+.btn-fixed-height {
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+}
+
