@@ -111,11 +111,22 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   });
 });
 
-// 404 handler
+// 404 handler - must be last
 app.use((req, res) => {
   res.status(404).json({
     error: 'Not Found',
-    message: `Route ${req.originalUrl} not found`
+    message: `Route ${req.method} ${req.originalUrl} not found`,
+    availableEndpoints: [
+      'GET /',
+      'GET /api/health',
+      'POST /api/auth/login',
+      'POST /api/auth/register',
+      'GET /api/staff',
+      'GET /api/customers',
+      'GET /api/counters',
+      'GET /api/shifts',
+      'GET /api/orders'
+    ]
   });
 });
 
