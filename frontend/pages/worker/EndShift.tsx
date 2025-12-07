@@ -19,13 +19,21 @@ const EndShiftPage: React.FC = () => {
     setError(null);
     try {
       const currentShift = await shiftsService.getCurrentShift();
-      setShift(currentShift);
-
-      const shiftOrders = await ordersService.getOrdersByShift(currentShift.id);
-      setOrders(shiftOrders);
+      if (currentShift) {
+        setShift(currentShift);
+        const shiftOrders = await ordersService.getOrdersByShift(currentShift.id);
+        setOrders(shiftOrders);
+      } else {
+        setError('Bạn chưa có ca làm việc active. Không thể kết thúc ca.');
+      }
     } catch (err: any) {
       console.error('Load end shift data error:', err);
-      setError(err.message || 'Lỗi tải dữ liệu. Vui lòng thử lại.');
+      // Nếu là lỗi 404, hiển thị thông báo không có ca
+      if (err.response?.status === 404 || err.response?.statusCode === 404) {
+        setError('Bạn chưa có ca làm việc active. Không thể kết thúc ca.');
+      } else {
+        setError(err.message || 'Lỗi tải dữ liệu. Vui lòng thử lại.');
+      }
     } finally {
       setLoading(false);
     }

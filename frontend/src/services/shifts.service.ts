@@ -58,15 +58,26 @@ export async function getShiftById(id: string): Promise<Shift> {
 
 /**
  * Lấy ca hiện tại của worker (active)
+ * Trả về null nếu không tìm thấy ca (404) thay vì throw error
  */
-export async function getCurrentShift(): Promise<Shift> {
-  const response = await apiClient.get<ApiResponse<Shift>>('/shifts/current');
+export async function getCurrentShift(): Promise<Shift | null> {
+  try {
+    const response = await apiClient.get<ApiResponse<Shift>>('/shifts/current');
 
-  if (!response.data.success || !response.data.data) {
-    throw new Error(response.data.error || 'Không thể lấy ca làm việc hiện tại');
+    if (!response.data.success || !response.data.data) {
+      // Nếu là 404, trả về null (không có ca) thay vì throw error
+      return null;
+    }
+
+    return response.data.data;
+  } catch (error: any) {
+    // Nếu là lỗi 404 (không tìm thấy ca), trả về null
+    if (error.response?.status === 404) {
+      return null;
+    }
+    // Các lỗi khác thì throw lại
+    throw error;
   }
-
-  return response.data.data;
 }
 
 /**

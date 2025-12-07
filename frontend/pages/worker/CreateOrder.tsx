@@ -53,10 +53,14 @@ const CreateOrderPage: () => React.JSX.Element = () => {
       setLoadingShift(true);
       try {
         const currentShift = await shiftsService.getCurrentShift();
-        setShiftId(currentShift.id);
+        if (currentShift) {
+          setShiftId(currentShift.id);
+        } else {
+          setError('Bạn chưa có ca làm việc hôm nay. Vui lòng liên hệ quản lý để được tạo ca.');
+        }
       } catch (err: any) {
         console.error('Load shift error:', err);
-        setError('Không tìm thấy ca làm việc. Vui lòng liên hệ quản lý.');
+        setError('Lỗi tải thông tin ca làm việc. Vui lòng thử lại.');
       } finally {
         setLoadingShift(false);
       }

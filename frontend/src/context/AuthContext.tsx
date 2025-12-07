@@ -28,40 +28,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuthStatus = useCallback(async () => {
     try {
-      if (checkAuth()) {
-        // Try to get user from cache first
-        const cachedUser = getUser();
-        if (cachedUser) {
-          setUser(cachedUser);
-          setIsLoading(false);
-          // Fetch from API in background (non-blocking)
-          getCurrentUser()
-            .then((userData) => {
-              setUser(userData);
-            })
-            .catch((error) => {
-              console.error('Failed to fetch user:', error);
-              // Only logout if no cached user
-              if (!cachedUser) {
-                clearAuthData();
-                setUser(null);
-              }
-            });
-          return; // Return early to show UI faster
-        }
+      // Check if there's a valid token first
+      if (!checkAuth()) {
+        // No token, ensure everything is cleared
+        clearAuthData();
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
 
-        // If no cached user, fetch from API (blocking)
-        try {
-          const userData = await getCurrentUser();
-          setUser(userData);
-        } catch (error) {
-          console.error('Failed to fetch user:', error);
-          clearAuthData();
-        }
+      // Has token, verify with API
+      try {
+        const userData = await getCurrentUser(true); // Force refresh to ensure correct user data
+        setUser(userData);
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+        // Token might be invalid, clear everything
+        clearAuthData();
+        setUser(null);
       }
     } catch (error) {
       console.error('Auth check error:', error);
       clearAuthData();
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -75,10 +64,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (credentials: LoginCredentials) => {
     try {
       setIsLoading(true);
+      // Clear any old user data before login
+      setUser(null);
+      clearAuthData();
+      
       const response = await loginService(credentials);
+      // Set new user - this will trigger re-render and navigation
       setUser(response.user);
     } catch (error: any) {
       console.error('Login error:', error);
+      // Ensure state is cleared on error
+      setUser(null);
+      clearAuthData();
       throw error;
     } finally {
       setIsLoading(false);
@@ -88,12 +85,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     try {
       setIsLoading(true);
-      await logoutService();
+      // Clear user state first to prevent race conditions
       setUser(null);
+      // Clear all auth data from storage
+      clearAuthData();
+      // Call logout service (fire and forget)
+      await logoutService().catch((error) => {
+        console.error('Logout API error:', error);
+        // Continue even if API call fails
+      });
     } catch (error) {
       console.error('Logout error:', error);
-      // Clear local data even if API call fails
+      // Ensure state and storage are cleared
       setUser(null);
+      clearAuthData();
     } finally {
       setIsLoading(false);
     }

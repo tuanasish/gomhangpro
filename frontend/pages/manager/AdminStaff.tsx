@@ -9,8 +9,9 @@ import Avatar from '../../src/components/common/Avatar';
 
 const AdminStaffPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { showSuccess, showError } = useNotification();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -217,11 +218,23 @@ const AdminStaffPage: React.FC = () => {
           </button>
           <div className="flex flex-col gap-1">
             <button
-              onClick={() => navigate(RoutePath.LOGIN)}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 w-full text-left"
+              onClick={async () => {
+                setIsLoggingOut(true);
+                try {
+                  await logout();
+                  navigate(RoutePath.LOGIN, { replace: true });
+                } catch (error) {
+                  console.error('Logout error:', error);
+                  navigate(RoutePath.LOGIN, { replace: true });
+                } finally {
+                  setIsLoggingOut(false);
+                }
+              }}
+              disabled={isLoggingOut}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 w-full text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="material-symbols-outlined text-2xl">logout</span>
-              <p className="text-sm font-medium leading-normal">Đăng xuất</p>
+              <p className="text-sm font-medium leading-normal">{isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}</p>
             </button>
           </div>
         </div>

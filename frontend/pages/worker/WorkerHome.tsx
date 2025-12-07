@@ -23,17 +23,28 @@ const WorkerHomePage: React.FC = () => {
       const currentShift = await shiftsService.getCurrentShift();
       setShift(currentShift);
 
-      const shiftOrders = await ordersService.getOrdersByShift(currentShift.id);
-      // Sắp xếp orders theo thời gian tạo (sớm nhất trước)
-      const sortedOrders = shiftOrders.sort((a, b) => {
-        const timeA = new Date(a.createdAt).getTime();
-        const timeB = new Date(b.createdAt).getTime();
-        return timeA - timeB;
-      });
-      setOrders(sortedOrders);
+      if (currentShift) {
+        const shiftOrders = await ordersService.getOrdersByShift(currentShift.id);
+        // Sắp xếp orders theo thời gian tạo (sớm nhất trước)
+        const sortedOrders = shiftOrders.sort((a, b) => {
+          const timeA = new Date(a.createdAt).getTime();
+          const timeB = new Date(b.createdAt).getTime();
+          return timeA - timeB;
+        });
+        setOrders(sortedOrders);
+      } else {
+        setOrders([]);
+      }
     } catch (err: any) {
       console.error('Load worker home data error:', err);
-      setError(err.message || 'Lỗi tải dữ liệu. Vui lòng thử lại.');
+      // Nếu là lỗi 404 (không tìm thấy ca), coi như không có ca thay vì hiển thị lỗi
+      if (err.response?.status === 404 || err.response?.statusCode === 404) {
+        setShift(null);
+        setOrders([]);
+      } else {
+        // Các lỗi khác thì hiển thị error message
+        setError(err.message || 'Lỗi tải dữ liệu. Vui lòng thử lại.');
+      }
     } finally {
       setLoading(false);
     }
@@ -206,14 +217,23 @@ const WorkerHomePage: React.FC = () => {
 
               {!loading && !shift && !error && (
                 <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    Bạn chưa có ca làm việc hôm nay. Vui lòng liên hệ quản lý.
+                  <div className="mb-6">
+                    <span className="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-600 mb-4">
+                      schedule
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    Chưa có ca làm việc
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">
+                    Bạn chưa có ca làm việc hôm nay. Vui lòng liên hệ quản lý để được tạo ca hoặc đợi quản lý tạo ca cho bạn.
                   </p>
                   <button
                     onClick={() => navigate(RoutePath.WORKER_START_SHIFT)}
-                    className="text-primary hover:text-primary-dark dark:text-primary-light"
+                    className="flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
                   >
-                    Bắt đầu ca
+                    <span className="material-symbols-outlined">play_arrow</span>
+                    <span>Xem ca làm việc</span>
                   </button>
                 </div>
               )}

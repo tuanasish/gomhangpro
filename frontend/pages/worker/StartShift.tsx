@@ -19,10 +19,15 @@ const StartShiftPage: React.FC = () => {
       setError(null);
       try {
         const currentShift = await shiftsService.getCurrentShift();
+        // Nếu có ca, set vào state (để hiển thị thông tin ca)
+        // Nếu không có ca (null), giữ shift = null (để hiển thị form tạo ca mới hoặc thông báo)
         setShift(currentShift);
       } catch (err: any) {
         console.error('Load current shift error:', err);
-        setError(err.message || 'Không tìm thấy ca làm việc. Vui lòng liên hệ quản lý.');
+        // Nếu là lỗi 404, không set error (coi như không có ca)
+        if (err.response?.status !== 404 && err.response?.statusCode !== 404) {
+          setError(err.message || 'Lỗi tải thông tin ca làm việc. Vui lòng thử lại.');
+        }
       } finally {
         setLoading(false);
       }
