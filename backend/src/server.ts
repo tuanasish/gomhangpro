@@ -61,6 +61,24 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Gom Hàng Pro API is running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      staff: '/api/staff',
+      customers: '/api/customers',
+      counters: '/api/counters',
+      shifts: '/api/shifts',
+      orders: '/api/orders'
+    }
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
