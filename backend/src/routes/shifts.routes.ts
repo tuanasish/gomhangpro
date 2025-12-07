@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { getShiftsList, getShiftById, getCurrentShift, createShift, startShift, endShift } from '../controllers/shifts.controller';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+import { getShiftsList, getShiftById, getCurrentShift, createShift, startShift, endShift } from '../controllers/shifts.controller.js';
+import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 const router = Router();
 

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { ApiResponse, User } from '../types';
-import { hashPassword } from '../utils/bcrypt.utils';
-import { supabase } from '../config/supabase';
+import { ApiResponse, User } from '../types/index.js';
+import { hashPassword } from '../utils/bcrypt.utils.js';
+import { supabase } from '../config/supabase.js';
 
 /**
  * Lấy danh sách nhân viên

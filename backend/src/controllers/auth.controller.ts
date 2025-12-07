@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { LoginRequest, LoginResponse, ApiResponse, User } from '../types';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken, TokenPayload } from '../utils/jwt.utils';
-import { comparePassword, hashPassword } from '../utils/bcrypt.utils';
-import { supabase } from '../config/supabase';
+import { LoginRequest, LoginResponse, ApiResponse, User } from '../types/index.js';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, TokenPayload } from '../utils/jwt.utils.js';
+import { comparePassword, hashPassword } from '../utils/bcrypt.utils.js';
+import { supabase } from '../config/supabase.js';
 
 /**
  * Register first admin (public endpoint, only works if no admin exists)

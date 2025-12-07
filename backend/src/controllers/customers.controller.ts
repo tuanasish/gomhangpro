@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { ApiResponse, Customer } from '../types';
-import { supabase } from '../config/supabase';
+import { ApiResponse, Customer } from '../types/index.js';
+import { supabase } from '../config/supabase.js';
 
 /**
  * Lấy danh sách khách hàng

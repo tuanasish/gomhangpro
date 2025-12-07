@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { ApiResponse, Counter } from '../types';
-import { supabase } from '../config/supabase';
+import { ApiResponse, Counter } from '../types/index.js';
+import { supabase } from '../config/supabase.js';
 
 /**
  * Lấy danh sách quầy

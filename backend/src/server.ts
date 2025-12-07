@@ -71,12 +71,12 @@ app.get('/api/health', (req, res) => {
 });
 
 // Routes
-import authRoutes from './routes/auth.routes';
-import staffRoutes from './routes/staff.routes';
-import customersRoutes from './routes/customers.routes';
-import countersRoutes from './routes/counters.routes';
-import shiftsRoutes from './routes/shifts.routes';
-import ordersRoutes from './routes/orders.routes';
+import authRoutes from './routes/auth.routes.js';
+import staffRoutes from './routes/staff.routes.js';
+import customersRoutes from './routes/customers.routes.js';
+import countersRoutes from './routes/counters.routes.js';
+import shiftsRoutes from './routes/shifts.routes.js';
+import ordersRoutes from './routes/orders.routes.js';
 app.use('/api/auth', authRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/customers', customersRoutes);
@@ -113,7 +113,7 @@ if (!process.env.VERCEL) {
     // Test Supabase connection if credentials are provided
     if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       try {
-        const { testSupabaseConnection } = await import('./config/supabase');
+        const { testSupabaseConnection } = await import('./config/supabase.js');
         await testSupabaseConnection();
       } catch (error: any) {
         console.log('⚠️  Supabase connection failed:', error?.message || error);

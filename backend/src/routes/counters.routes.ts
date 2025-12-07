@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { getCountersList, getCounterById, createCounter, updateCounter, deleteCounter } from '../controllers/counters.controller';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+import { getCountersList, getCounterById, createCounter, updateCounter, deleteCounter } from '../controllers/counters.controller.js';
+import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 const router = Router();
 

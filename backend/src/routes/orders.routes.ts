@@ -6,8 +6,8 @@ import {
   createOrder,
   updateOrder,
   deleteOrder,
-} from '../controllers/orders.controller';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+} from '../controllers/orders.controller.js';
+import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
