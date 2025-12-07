@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RoutePath } from '../../types';
 import BottomNavAdmin from '../../components/manager/BottomNavAdmin';
 import { useAuth } from '../../src/hooks/useAuth';
 import Avatar from '../../src/components/common/Avatar';
 import { getDashboardStats, DashboardStats } from '../../src/services/dashboard.service';
+import { getOrdersList, Order } from '../../src/services/orders.service';
 
 const ManagerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +23,8 @@ const ManagerDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -30,6 +33,10 @@ const ManagerDashboardPage: React.FC = () => {
       try {
         const data = await getDashboardStats(selectedDate);
         setStats(data);
+        
+        // Load orders để tính toán theo nhân viên
+        const ordersData = await getOrdersList({ date: selectedDate });
+        setOrders(ordersData);
       } catch (err: any) {
         console.error('Load dashboard stats error:', err);
         setError(err.message || 'Lỗi tải thống kê');
@@ -40,6 +47,41 @@ const ManagerDashboardPage: React.FC = () => {
 
     loadStats();
   }, [selectedDate]);
+
+  // Tính toán danh sách nhân viên và số tiền đã chi
+  const staffSpendingList = useMemo(() => {
+    const staffMap = new Map<string, { staffId: string; staffName: string; totalSpent: number }>();
+    
+    orders.forEach(order => {
+      if (order.staffId && order.staffName) {
+        const current = staffMap.get(order.staffId) || {
+          staffId: order.staffId,
+          staffName: order.staffName,
+          totalSpent: 0
+        };
+        current.totalSpent += order.tienHang;
+        staffMap.set(order.staffId, current);
+      }
+    });
+    
+    // Convert to array and sort by totalSpent descending
+    return Array.from(staffMap.values()).sort((a, b) => b.totalSpent - a.totalSpent);
+  }, [orders]);
+
+  // Lọc orders theo nhân viên được chọn
+  const selectedStaffOrders = useMemo(() => {
+    if (!selectedStaffId) return [];
+    return orders
+      .filter(order => order.staffId === selectedStaffId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [orders, selectedStaffId]);
+
+  // Lấy tên nhân viên được chọn
+  const selectedStaffName = useMemo(() => {
+    if (!selectedStaffId) return '';
+    const staff = staffSpendingList.find(s => s.staffId === selectedStaffId);
+    return staff?.staffName || '';
+  }, [staffSpendingList, selectedStaffId]);
 
   const { activeShifts, totalTienGiaoCa, ordersToday, totalRevenueToday, totalTienGiaoCaTheoNgay, totalTienHangDaTraTheoNgay, totalTienHoaHongTheoNgay } = stats;
 
@@ -194,128 +236,114 @@ const ManagerDashboardPage: React.FC = () => {
             )}
 
             {!loading && (
-              <>
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  <div className="bg-white dark:bg-[#111827] rounded-xl p-3 sm:p-4 border border-gray-200/80 dark:border-gray-800/60 flex flex-col">
-                    <div className="flex justify-between items-start">
-                      <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm font-medium">
-                        Ca đang hoạt động
-                      </p>
-                      <span className="material-symbols-outlined text-primary text-lg sm:text-xl">work_history</span>
-                    </div>
-                    <p className="text-gray-900 dark:text-white text-xl sm:text-2xl font-bold mt-2">
-                      {activeShifts}
-                    </p>
-                    <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                      Nhân viên đang làm việc
-                    </p>
-                  </div>
-              <div className="bg-white dark:bg-[#111827] rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/60 flex flex-col">
-                <div className="flex justify-between items-start">
-                  <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-                    Tổng tiền giao ca
-                  </p>
-                  <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
-                </div>
-                <p className="text-gray-900 dark:text-white text-2xl font-bold mt-2">
-                  {totalTienGiaoCa.toLocaleString('vi-VN')}đ
-                </p>
-                <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                  Tiền đã đưa cho nhân viên
-                </p>
-              </div>
-              <div className="bg-white dark:bg-[#111827] rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/60 flex flex-col">
-                <div className="flex justify-between items-start">
-                  <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-                    Đơn hàng
-                  </p>
-                  <span className="material-symbols-outlined text-primary">receipt_long</span>
-                </div>
-                <p className="text-gray-900 dark:text-white text-2xl font-bold mt-2">
-                  {ordersToday}
-                </p>
-                <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                  Tổng số đơn đã tạo
-                </p>
-              </div>
-              <div className="bg-white dark:bg-[#111827] rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/60 flex flex-col">
-                <div className="flex justify-between items-start">
-                  <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-                    Doanh thu
-                  </p>
-                  <span className="material-symbols-outlined text-primary">monitoring</span>
-                </div>
-                <p className="text-gray-900 dark:text-white text-2xl font-bold mt-2">
-                  {totalRevenueToday.toLocaleString('vi-VN')}đ
-                </p>
-                <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                  Tổng tiền hóa đơn
-                </p>
-              </div>
-              <div className="bg-white dark:bg-[#111827] rounded-xl p-3 sm:p-4 border border-green-200 dark:border-green-800/60 flex flex-col">
-                <div className="flex justify-between items-start">
-                  <p className="text-green-600 dark:text-green-400 text-xs sm:text-sm font-medium">
-                    Tiền hoa hồng
-                  </p>
-                  <span className="material-symbols-outlined text-green-600 dark:text-green-400 text-lg sm:text-xl">savings</span>
-                </div>
-                <p className="text-green-600 dark:text-green-400 text-xl sm:text-2xl font-bold mt-2">
-                  {totalTienHoaHongTheoNgay.toLocaleString('vi-VN')}đ
-                </p>
-                <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                  Công ty sẽ nhận
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white dark:bg-[#111827] rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/60">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                  <h2 className="text-gray-900 dark:text-white text-lg font-semibold">
-                    Doanh thu
+              <div className="space-y-6 max-w-2xl">
+                {/* Thống kê theo ngày */}
+                <div className="bg-white dark:bg-[#111827] rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/60">
+                  <h2 className="text-gray-900 dark:text-white text-lg font-bold mb-4">
+                    Thống kê theo ngày
                   </h2>
-                  <div className="flex items-center gap-2 mt-2 sm:mt-0 text-sm">
-                    <select className="form-select rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-gray-200 py-1.5 text-sm focus:ring-primary focus:border-primary">
-                      <option>Tháng này</option>
-                      <option>Tháng trước</option>
-                      <option>Năm nay</option>
-                    </select>
+                  <div className="flex flex-col">
+                    <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                      <p className="text-gray-900 dark:text-white text-sm">Đã giao cho nhân viên</p>
+                      <p className="text-gray-900 dark:text-white font-bold">
+                        {totalTienGiaoCaTheoNgay.toLocaleString('vi-VN')}₫
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                      <p className="text-gray-900 dark:text-white text-sm">Nhân viên đã chi</p>
+                      <p className="text-primary font-bold">
+                        {totalTienHangDaTraTheoNgay.toLocaleString('vi-VN')}₫
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center py-3">
+                      <p className="text-gray-900 dark:text-white text-sm">Tiền hoa hồng công ty</p>
+                      <p className="text-green-600 dark:text-green-400 font-bold">
+                        {totalTienHoaHongTheoNgay.toLocaleString('vi-VN')}₫
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="w-full h-64 md:h-80 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex items-center justify-center">
-                  <p className="text-gray-400 dark:text-gray-500">
-                    Biểu đồ đang được tải...
-                  </p>
-                </div>
+
+                {/* Danh sách nhân viên và số tiền đã chi */}
+                {staffSpendingList.length > 0 && (
+                  <div className="bg-white dark:bg-[#111827] rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/60">
+                    <h2 className="text-gray-900 dark:text-white text-lg font-bold mb-4">
+                      Nhân viên đã chi
+                    </h2>
+                    <div className="flex flex-col">
+                      {staffSpendingList.map((staff, index) => (
+                        <div
+                          key={staff.staffId}
+                          onClick={() => setSelectedStaffId(selectedStaffId === staff.staffId ? null : staff.staffId)}
+                          className={`flex justify-between items-center py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg px-2 transition-colors ${
+                            index < staffSpendingList.length - 1
+                              ? 'border-b border-gray-200 dark:border-gray-700'
+                              : ''
+                          } ${selectedStaffId === staff.staffId ? 'bg-primary/5 dark:bg-primary/10' : ''}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-sm text-gray-400">
+                              {selectedStaffId === staff.staffId ? 'expand_less' : 'expand_more'}
+                            </span>
+                            <p className="text-gray-900 dark:text-white text-sm">{staff.staffName}</p>
+                          </div>
+                          <p className="text-primary font-bold">
+                            {staff.totalSpent.toLocaleString('vi-VN')}₫
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Chi tiết hóa đơn của nhân viên được chọn */}
+                {selectedStaffId && selectedStaffOrders.length > 0 && (
+                  <div className="bg-white dark:bg-[#111827] rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/60">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-gray-900 dark:text-white text-lg font-bold">
+                        Chi tiết hóa đơn - {selectedStaffName}
+                      </h2>
+                      <button
+                        onClick={() => setSelectedStaffId(null)}
+                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      >
+                        <span className="material-symbols-outlined">close</span>
+                      </button>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {selectedStaffOrders.map((order, index) => (
+                        <div
+                          key={order.id}
+                          className="flex justify-between items-start p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                                {index + 1}
+                              </span>
+                              <p className="text-gray-900 dark:text-white text-sm font-medium">
+                                {order.customerName || 'Khách lẻ'}
+                              </p>
+                            </div>
+                            <p className="text-gray-500 dark:text-gray-400 text-xs ml-8">
+                              {new Date(order.createdAt).toLocaleString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                          <p className="text-primary font-bold text-sm">
+                            {order.tienHang.toLocaleString('vi-VN')}₫
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="bg-white dark:bg-[#111827] rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/60">
-                <h2 className="text-gray-900 dark:text-white text-lg font-semibold mb-4">
-                  Thống kê theo ngày
-                </h2>
-                <div className="flex flex-col gap-4">
-                  <div className="flex justify-between items-center pb-3 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">Đã giao cho nhân viên</p>
-                    <p className="text-gray-900 dark:text-white font-bold">
-                      {totalTienGiaoCaTheoNgay.toLocaleString('vi-VN')}đ
-                    </p>
-                  </div>
-                  <div className="flex justify-between items-center pb-3 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">Nhân viên đã chi</p>
-                    <p className="text-primary font-bold">
-                      {totalTienHangDaTraTheoNgay.toLocaleString('vi-VN')}đ
-                    </p>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">Tiền hoa hồng công ty</p>
-                    <p className="text-green-600 dark:text-green-400 font-bold">
-                      {totalTienHoaHongTheoNgay.toLocaleString('vi-VN')}đ
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-              </>
             )}
           </div>
         </div>
