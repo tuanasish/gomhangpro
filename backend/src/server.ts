@@ -13,8 +13,44 @@ dotenv.config({ path: envPath });
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// CORS configuration - Support Safari và các browser khác
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Allow requests with no origin (like mobile apps, Postman, hoặc Safari trong một số trường hợp)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    
+    // Allow localhost trong development
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5173',
+    ];
+    
+    // Nếu là production (có origin từ Vercel), cho phép tất cả
+    // Hoặc bạn có thể whitelist cụ thể các domain Vercel
+    if (origin.includes('vercel.app') || origin.includes('localhost')) {
+      callback(null, true);
+      return;
+    }
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Tạm thời cho phép tất cả, có thể restrict sau
+    }
+  },
+  credentials: true, // Cho phép gửi cookies/credentials
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization'],
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

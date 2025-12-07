@@ -1,7 +1,26 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { getAccessToken, getRefreshToken, saveAccessToken, clearAuthData } from '../utils/storage.utils';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+// Tự động detect API URL: production hoặc development
+const getApiBaseUrl = () => {
+  // Nếu có env variable thì dùng
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // Production: dùng cùng domain với frontend
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    // Trên Vercel, backend thường deploy riêng hoặc dùng serverless functions
+    // Nếu backend deploy riêng, cần set VITE_API_BASE_URL
+    // Nếu dùng API routes trong Vercel, dùng relative path
+    return '/api';
+  }
+  
+  // Development
+  return 'http://localhost:5000/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
