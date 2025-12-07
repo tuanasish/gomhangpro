@@ -5,10 +5,17 @@ import express from 'express';
 import cors from 'cors';
 
 // Load environment variables từ file .env trong backend folder
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const envPath = join(__dirname, '../../.env');
-dotenv.config({ path: envPath });
+// Trên Vercel, environment variables được load tự động, không cần .env file
+// Chỉ load .env file trong development/local environment
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  const envPath = join(__dirname, '../../.env');
+  dotenv.config({ path: envPath });
+} else {
+  // Trên Vercel, chỉ load .env nếu file tồn tại (for local testing)
+  dotenv.config();
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
