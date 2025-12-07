@@ -6,7 +6,7 @@ const cors = require('cors');
 
 let app = null;
 
-function createApp() {
+async function createApp() {
   if (app) return app;
   
   app = express();
@@ -32,30 +32,31 @@ function createApp() {
   });
   
   // Import và mount routes từ backend
-  // Lưu ý: Cần import từ backend/dist sau khi build
+  // Backend build ra ES modules, cần dynamic import
   try {
-    // Dynamic import routes
     const path = require('path');
-    const fs = require('fs');
-    const backendDistPath = path.join(__dirname, '../backend/dist');
+    const { pathToFileURL } = require('url');
     
-    if (fs.existsSync(backendDistPath)) {
-      const authRoutes = require(path.join(backendDistPath, 'routes/auth.routes.js')).default;
-      const staffRoutes = require(path.join(backendDistPath, 'routes/staff.routes.js')).default;
-      const customersRoutes = require(path.join(backendDistPath, 'routes/customers.routes.js')).default;
-      const countersRoutes = require(path.join(backendDistPath, 'routes/counters.routes.js')).default;
-      const shiftsRoutes = require(path.join(backendDistPath, 'routes/shifts.routes.js')).default;
-      const ordersRoutes = require(path.join(backendDistPath, 'routes/orders.routes.js')).default;
-      
-      app.use('/api/auth', authRoutes);
-      app.use('/api/staff', staffRoutes);
-      app.use('/api/customers', customersRoutes);
-      app.use('/api/counters', countersRoutes);
-      app.use('/api/shifts', shiftsRoutes);
-      app.use('/api/orders', ordersRoutes);
-    }
+    // Sử dụng relative path từ api/ đến backend/dist
+    const backendDistPath = path.resolve(__dirname, '../backend/dist');
+    
+    // Dynamic import ES modules
+    const authRoutesModule = await import(pathToFileURL(path.join(backendDistPath, 'routes/auth.routes.js')).href);
+    const staffRoutesModule = await import(pathToFileURL(path.join(backendDistPath, 'routes/staff.routes.js')).href);
+    const customersRoutesModule = await import(pathToFileURL(path.join(backendDistPath, 'routes/customers.routes.js')).href);
+    const countersRoutesModule = await import(pathToFileURL(path.join(backendDistPath, 'routes/counters.routes.js')).href);
+    const shiftsRoutesModule = await import(pathToFileURL(path.join(backendDistPath, 'routes/shifts.routes.js')).href);
+    const ordersRoutesModule = await import(pathToFileURL(path.join(backendDistPath, 'routes/orders.routes.js')).href);
+    
+    app.use('/api/auth', authRoutesModule.default);
+    app.use('/api/staff', staffRoutesModule.default);
+    app.use('/api/customers', customersRoutesModule.default);
+    app.use('/api/counters', countersRoutesModule.default);
+    app.use('/api/shifts', shiftsRoutesModule.default);
+    app.use('/api/orders', ordersRoutesModule.default);
   } catch (error) {
     console.error('Error loading routes:', error);
+    console.error('Error stack:', error.stack);
   }
   
   // 404 handler
@@ -70,7 +71,7 @@ function createApp() {
 }
 
 module.exports = async (req, res) => {
-  const expressApp = createApp();
+  const expressApp = await createApp();
   return expressApp(req, res);
 };
 
