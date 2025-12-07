@@ -39,6 +39,7 @@ export function getRefreshToken(): string | null {
  * Save user data
  */
 export function saveUser(user: any): void {
+  console.log('[STORAGE] saveUser', { role: user?.role, email: user?.email, userId: user?.id });
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
@@ -47,10 +48,16 @@ export function saveUser(user: any): void {
  */
 export function getUser(): any | null {
   const userStr = localStorage.getItem(USER_KEY);
-  if (!userStr) return null;
+  if (!userStr) {
+    console.log('[STORAGE] getUser - No user in storage');
+    return null;
+  }
   try {
-    return JSON.parse(userStr);
-  } catch {
+    const user = JSON.parse(userStr);
+    console.log('[STORAGE] getUser', { role: user?.role, email: user?.email, userId: user?.id });
+    return user;
+  } catch (e) {
+    console.log('[STORAGE] getUser - Parse error', e);
     return null;
   }
 }
@@ -73,10 +80,12 @@ export function getRememberMe(): boolean {
  * Remove all auth data
  */
 export function clearAuthData(): void {
+  console.log('[STORAGE] clearAuthData - Clearing all auth data');
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   // Keep remember me preference
+  console.log('[STORAGE] clearAuthData - Done');
 }
 
 /**

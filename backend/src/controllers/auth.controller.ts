@@ -438,8 +438,10 @@ export async function getCurrentUser(req: Request, res: Response<ApiResponse<Omi
  */
 export async function logout(req: Request, res: Response<ApiResponse>): Promise<void> {
   try {
+    // Logout endpoint không yêu cầu authentication để cho phép logout ngay cả khi token đã hết hạn
     // In a real implementation, you would invalidate the refresh token in database
     // For now, just return success
+    // Token sẽ được clear ở client side
     res.json({
       success: true,
       message: 'Đăng xuất thành công',

@@ -41,9 +41,9 @@ router.get('/me', authenticate, getCurrentUser);
 
 /**
  * @route   POST /api/auth/logout
- * @desc    Logout user
- * @access  Private
+ * @desc    Logout user (optional auth - allow logout even if token expired)
+ * @access  Public (optional auth)
  */
-router.post('/logout', authenticate, logout);
+router.post('/logout', logout);
 
 export default router;

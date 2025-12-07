@@ -9,7 +9,7 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated, user } = useAuth();
-  const { showInfo } = useNotification();
+  const { showSuccess, showError, showInfo } = useNotification();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,11 +19,51 @@ const LoginPage: React.FC = () => {
 
   // Redirect if already authenticated - tự động điều hướng theo role
   React.useEffect(() => {
+    console.log('[LOGIN PAGE] useEffect - Auth status', { 
+      isAuthenticated, 
+      hasUser: !!user,
+      userRole: user?.role,
+      userEmail: user?.email 
+    });
+    
     if (isAuthenticated && user) {
       // Lấy route mặc định theo role của user
       const defaultRoute = getDefaultRouteByRole(user.role);
-      const from = (location.state as any)?.from?.pathname || defaultRoute;
-      navigate(from, { replace: true });
+      const fromPath = (location.state as any)?.from?.pathname;
+      
+      console.log('[LOGIN PAGE] Redirecting', { 
+        userRole: user.role, 
+        defaultRoute,
+        fromPath,
+        locationState: location.state 
+      });
+      
+      // QUAN TRỌNG: Chỉ dùng 'from' path nếu nó là route hợp lệ cho role hiện tại
+      // Nếu 'from' là route của role cũ (ví dụ: /worker/account khi login với admin),
+      // thì phải dùng defaultRoute thay vì 'from'
+      let targetRoute = defaultRoute;
+      
+      if (fromPath) {
+        // Kiểm tra xem fromPath có phải là worker route không
+        const isWorkerRoute = fromPath.startsWith('/worker/');
+        // Nếu user là admin/manager nhưng fromPath là worker route, thì bỏ qua fromPath
+        if (isWorkerRoute && (user.role === 'admin' || user.role === 'manager')) {
+          console.log('[LOGIN PAGE] Ignoring worker route for admin/manager, using defaultRoute');
+          targetRoute = defaultRoute;
+        } else {
+          // Có thể dùng fromPath nếu nó hợp lệ
+          targetRoute = fromPath;
+        }
+      }
+      
+      console.log('[LOGIN PAGE] Final target route', { targetRoute, userRole: user.role });
+      
+      // Use setTimeout to ensure navigation happens after state updates
+      const timer = setTimeout(() => {
+        console.log('[LOGIN PAGE] Navigating to', targetRoute);
+        navigate(targetRoute, { replace: true });
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, user, navigate, location]);
 
@@ -31,7 +71,9 @@ const LoginPage: React.FC = () => {
     e?.preventDefault();
     
     if (!email || !password) {
-      setError('Vui lòng nhập email và mật khẩu');
+      const errorMsg = 'Vui lòng nhập email và mật khẩu';
+      setError(errorMsg);
+      showError(errorMsg);
       return;
     }
 
@@ -40,9 +82,21 @@ const LoginPage: React.FC = () => {
 
     try {
       await login({ email, password, rememberMe });
+      // Show success toast
+      showSuccess('Đăng nhập thành công!');
       // Redirect sẽ được xử lý bởi useEffect khi user được set
     } catch (err: any) {
-      setError(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+      // Nếu lỗi 401 (Unauthorized), hiển thị thông báo về email/mật khẩu
+      if (err.response?.status === 401 || err.response?.statusCode === 401) {
+        const errorMsg = 'Email hoặc mật khẩu không chính xác. Vui lòng liên hệ admin để được hỗ trợ.';
+        setError(errorMsg);
+        showError(errorMsg);
+      } else {
+        // Các lỗi khác hiển thị message từ API hoặc message mặc định
+        const errorMsg = err.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
+        setError(errorMsg);
+        showError(errorMsg);
+      }
     } finally {
       setIsLoading(false);
     }
