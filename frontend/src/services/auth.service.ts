@@ -93,17 +93,23 @@ export async function refreshAccessToken(): Promise<string> {
   return accessToken;
 }
 
+// Cache for user data with timestamp
+let userCache: { user: LoginResponse['user']; timestamp: number } | null = null;
+const USER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Get current user info
  */
-export async function getCurrentUser(): Promise<LoginResponse['user']> {
-  // Try to get from localStorage first
-  const cachedUser = getUser();
-  if (cachedUser) {
-    return cachedUser;
+export async function getCurrentUser(forceRefresh = false): Promise<LoginResponse['user']> {
+  // Check cache first (unless force refresh)
+  if (!forceRefresh) {
+    const cachedUser = getUser();
+    if (cachedUser && userCache && Date.now() - userCache.timestamp < USER_CACHE_DURATION) {
+      return cachedUser;
+    }
   }
 
-  // If not in cache, fetch from API
+  // If not in cache or expired, fetch from API
   const response = await apiClient.get<ApiResponse<LoginResponse['user']>>('/auth/me');
 
   if (!response.data.success || !response.data.data) {
@@ -111,6 +117,7 @@ export async function getCurrentUser(): Promise<LoginResponse['user']> {
   }
 
   saveUser(response.data.data);
+  userCache = { user: response.data.data, timestamp: Date.now() };
   return response.data.data;
 }
 

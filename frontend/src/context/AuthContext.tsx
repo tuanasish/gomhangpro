@@ -33,18 +33,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const cachedUser = getUser();
         if (cachedUser) {
           setUser(cachedUser);
+          setIsLoading(false);
+          // Fetch from API in background (non-blocking)
+          getCurrentUser()
+            .then((userData) => {
+              setUser(userData);
+            })
+            .catch((error) => {
+              console.error('Failed to fetch user:', error);
+              // Only logout if no cached user
+              if (!cachedUser) {
+                clearAuthData();
+                setUser(null);
+              }
+            });
+          return; // Return early to show UI faster
         }
 
-        // Then fetch from API to ensure data is up to date
+        // If no cached user, fetch from API (blocking)
         try {
           const userData = await getCurrentUser();
           setUser(userData);
         } catch (error) {
           console.error('Failed to fetch user:', error);
-          // If API call fails, use cached user or logout
-          if (!cachedUser) {
-            clearAuthData();
-          }
+          clearAuthData();
         }
       }
     } catch (error) {

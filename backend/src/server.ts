@@ -58,8 +58,19 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Cache headers for API responses
+app.use((req, res, next) => {
+  // Don't cache API responses by default (except GET requests to specific endpoints)
+  if (req.method === 'GET' && (req.path === '/api/health' || req.path === '/api')) {
+    res.set('Cache-Control', 'public, max-age=60'); // Cache health check for 1 minute
+  } else {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  }
+  next();
+});
 
 // Root endpoint
 app.get('/', (req, res) => {

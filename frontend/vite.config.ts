@@ -158,13 +158,34 @@ export default defineConfig(({ mode }) => {
       build: {
         rollupOptions: {
           output: {
-            manualChunks: {
-              'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-              'axios': ['axios'],
+            manualChunks: (id) => {
+              // React and related
+              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+                return 'react-vendor';
+              }
+              // Axios
+              if (id.includes('axios')) {
+                return 'axios';
+              }
+              // PDF libraries
+              if (id.includes('jspdf')) {
+                return 'pdf-vendor';
+              }
+              // Vite and build tools
+              if (id.includes('node_modules')) {
+                return 'vendor';
+              }
             },
           },
         },
         chunkSizeWarningLimit: 1000,
+        minify: 'terser',
+        terserOptions: {
+          compress: {
+            drop_console: true, // Remove console.log in production
+            drop_debugger: true,
+          },
+        },
       },
     };
 });
