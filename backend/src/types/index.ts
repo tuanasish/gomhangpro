@@ -13,6 +13,8 @@ export interface Order {
   tienCongGom: number;
   phiDongHang: number;
   tienHoaHong: number;
+  tienThem?: number;
+  loaiTienThem?: string;
   tongTienHoaDon: number;
   status: 'pending' | 'completed' | 'cancelled';
   createdAt: Date;

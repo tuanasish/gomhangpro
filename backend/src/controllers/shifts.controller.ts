@@ -450,7 +450,7 @@ async function autoResetExpiredShifts(): Promise<void> {
   }
 
   if (expiredShifts && expiredShifts.length > 0) {
-    const shiftIdsToUpdate = expiredShifts.map(shift => shift.id);
+    const shiftIdsToUpdate = expiredShifts.map((shift: { id: string; date: string }) => shift.id);
     console.log(`Auto-resetting ${shiftIdsToUpdate.length} expired shifts.`);
 
     // Reset tiền về 0 và kết thúc ca
