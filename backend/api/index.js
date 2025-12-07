@@ -4,32 +4,42 @@
 // Since package.json has "type": "module", we use ES module syntax
 // Import the compiled server.js which exports the Express app as default
 
-let app;
+let cachedApp = null;
 
-try {
-  // Import the compiled server.js
-  // Use dynamic import to handle any loading errors
-  const serverModule = await import('../dist/server.js');
-  app = serverModule.default || serverModule;
-} catch (error) {
-  console.error('Error loading server module:', error);
-  console.error('Error stack:', error.stack);
-  
-  // Fallback: create a simple Express app that shows the error
-  const express = (await import('express')).default;
-  const fallbackApp = express();
-  
-  fallbackApp.get('*', (req, res) => {
-    res.status(500).json({ 
-      error: 'Failed to load server',
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      details: 'Please check server logs'
+async function loadApp() {
+  if (cachedApp) {
+    return cachedApp;
+  }
+
+  try {
+    // Import the compiled server.js
+    const serverModule = await import('../dist/server.js');
+    cachedApp = serverModule.default || serverModule;
+    return cachedApp;
+  } catch (error) {
+    console.error('Error loading server module:', error);
+    console.error('Error stack:', error.stack);
+    
+    // Fallback: create a simple Express app that shows the error
+    const express = (await import('express')).default;
+    const fallbackApp = express();
+    
+    fallbackApp.get('*', (req, res) => {
+      res.status(500).json({ 
+        error: 'Failed to load server',
+        message: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        details: 'Please check server logs'
+      });
     });
-  });
-  
-  app = fallbackApp;
+    
+    cachedApp = fallbackApp;
+    return cachedApp;
+  }
 }
 
-// Export the app for Vercel
-export default app;
+// Vercel expects a handler function
+export default async function handler(req, res) {
+  const app = await loadApp();
+  return app(req, res);
+}
