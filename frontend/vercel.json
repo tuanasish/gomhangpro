@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm install && npm run build",
+  "installCommand": "npm install",
   "framework": "vite",
   "outputDirectory": "dist",
   "rewrites": [
@@ -8,4 +10,3 @@
     }
   ]
 }
-
