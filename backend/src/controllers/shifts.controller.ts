@@ -525,3 +525,96 @@ export async function endShift(
   }
 }
 
+/**
+ * Cộng thêm tiền vào ca (Admin/Manager)
+ */
+export async function addMoneyToShift(req: Request, res: Response<ApiResponse<Shift>>): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { amount } = req.body;
+
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      res.status(400).json({
+        success: false,
+        error: 'Số tiền phải lớn hơn 0',
+      });
+      return;
+    }
+
+    // Lấy ca hiện tại
+    const { data: shift, error: shiftError } = await supabase
+      .from('shifts')
+      .select(`
+        *,
+        staff:users!shifts_staff_id_fkey(id, name),
+        counter:counters!shifts_counter_id_fkey(id, name)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (shiftError || !shift) {
+      res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy ca làm việc',
+      });
+      return;
+    }
+
+    // Tính toán lại
+    const tienGiaoCaMoi = parseFloat(shift.tien_giao_ca) + amount;
+    const tongTienHangDaTra = parseFloat(shift.tong_tien_hang_da_tra || 0);
+    const quyConLai = tienGiaoCaMoi - tongTienHangDaTra;
+
+    // Cập nhật ca
+    const { data: updatedShift, error: updateError } = await supabase
+      .from('shifts')
+      .update({
+        tien_giao_ca: tienGiaoCaMoi.toString(),
+        quy_con_lai: quyConLai.toString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select(`
+        *,
+        staff:users!shifts_staff_id_fkey(id, name),
+        counter:counters!shifts_counter_id_fkey(id, name)
+      `)
+      .single();
+
+    if (updateError || !updatedShift) {
+      console.error('Update shift error:', updateError);
+      res.status(500).json({
+        success: false,
+        error: 'Lỗi cập nhật ca làm việc',
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: updatedShift.id,
+        staffId: updatedShift.staff_id,
+        staffName: updatedShift.staff?.name,
+        counterId: updatedShift.counter_id || undefined,
+        counterName: updatedShift.counter?.name,
+        date: updatedShift.date,
+        startTime: new Date(updatedShift.start_time),
+        endTime: updatedShift.end_time ? new Date(updatedShift.end_time) : undefined,
+        tienGiaoCa: parseFloat(updatedShift.tien_giao_ca),
+        tongTienHangDaTra: parseFloat(updatedShift.tong_tien_hang_da_tra || 0),
+        quyConLai: parseFloat(updatedShift.quy_con_lai || 0),
+        status: updatedShift.status,
+        createdAt: new Date(updatedShift.created_at),
+        updatedAt: new Date(updatedShift.updated_at),
+      },
+    });
+  } catch (error: any) {
+    console.error('Add money to shift error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Lỗi cộng thêm tiền',
+    });
+  }
+}
+

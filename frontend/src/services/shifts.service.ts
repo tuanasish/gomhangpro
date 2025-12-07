@@ -117,3 +117,16 @@ export async function endShift(shiftId: string): Promise<Shift> {
   return response.data.data;
 }
 
+/**
+ * Cộng thêm tiền vào ca (Admin/Manager)
+ */
+export async function addMoneyToShift(shiftId: string, amount: number): Promise<Shift> {
+  const response = await apiClient.put<ApiResponse<Shift>>(`/shifts/${shiftId}/add-money`, { amount });
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error(response.data.error || 'Không thể cộng thêm tiền');
+  }
+
+  return response.data.data;
+}
+

@@ -16,12 +16,16 @@ const AdminShiftsPage: React.FC = () => {
   const { user } = useAuth();
   const { showSuccess, showError, showWarning } = useNotification();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAddMoneyModal, setShowAddMoneyModal] = useState(false);
   const [selectedShift, setSelectedShift] = useState<string | null>(null);
+  const [selectedShiftForAddMoney, setSelectedShiftForAddMoney] = useState<Shift | null>(null);
+  const [addMoneyAmount, setAddMoneyAmount] = useState('');
   const [shifts, setShifts] = useState<(Shift & { soDonHang?: number; tongTienHoaDon?: number })[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddingMoney, setIsAddingMoney] = useState(false);
 
   // Filter states
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
@@ -164,6 +168,49 @@ const AdminShiftsPage: React.FC = () => {
       tienGiaoCa: '',
     });
     setError(null);
+  };
+
+  const handleOpenAddMoneyModal = (shift: Shift) => {
+    setSelectedShiftForAddMoney(shift);
+    setAddMoneyAmount('');
+    setShowAddMoneyModal(true);
+    setError(null);
+  };
+
+  const handleCloseAddMoneyModal = () => {
+    setShowAddMoneyModal(false);
+    setSelectedShiftForAddMoney(null);
+    setAddMoneyAmount('');
+    setError(null);
+  };
+
+  const handleAddMoney = async () => {
+    if (!selectedShiftForAddMoney || !addMoneyAmount) {
+      showWarning('Vui lòng nhập số tiền');
+      return;
+    }
+
+    const amount = parseFloat(addMoneyAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showWarning('Vui lòng nhập số tiền hợp lệ');
+      return;
+    }
+
+    setIsAddingMoney(true);
+    setError(null);
+    try {
+      await shiftsService.addMoneyToShift(selectedShiftForAddMoney.id, amount);
+      await loadShifts();
+      handleCloseAddMoneyModal();
+      showSuccess(`Đã cộng thêm ${amount.toLocaleString('vi-VN')}đ vào ca`);
+    } catch (err: any) {
+      console.error('Add money error:', err);
+      const errorMessage = err.message || 'Lỗi cộng thêm tiền';
+      setError(errorMessage);
+      showError(errorMessage);
+    } finally {
+      setIsAddingMoney(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -409,12 +456,21 @@ const AdminShiftsPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => setSelectedShift(shift.id)}
-                          className="font-medium text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-white"
-                        >
-                          Xem chi tiết
-                        </button>
+                        <div className="flex gap-2 justify-center">
+                          <button
+                            onClick={() => handleOpenAddMoneyModal(shift)}
+                            className="font-medium text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                            title="Cộng thêm tiền"
+                          >
+                            + Tiền
+                          </button>
+                          <button
+                            onClick={() => setSelectedShift(shift.id)}
+                            className="font-medium text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-white"
+                          >
+                            Chi tiết
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -474,12 +530,20 @@ const AdminShiftsPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setSelectedShift(shift.id)}
-                    className="w-full mt-4 flex items-center justify-center h-10 px-4 rounded-lg bg-primary-light text-primary-dark dark:bg-primary/20 dark:text-primary-light text-sm font-bold hover:bg-primary/20 transition-colors"
-                  >
-                    Xem chi tiết
-                  </button>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => handleOpenAddMoneyModal(shift)}
+                      className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 text-sm font-bold hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                    >
+                      + Thêm tiền
+                    </button>
+                    <button
+                      onClick={() => setSelectedShift(shift.id)}
+                      className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-primary-light text-primary-dark dark:bg-primary/20 dark:text-primary-light text-sm font-bold hover:bg-primary/20 transition-colors"
+                    >
+                      Chi tiết
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -575,6 +639,90 @@ const AdminShiftsPage: React.FC = () => {
                     <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                   ) : (
                     'Tạo ca'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Money Modal */}
+      {showAddMoneyModal && selectedShiftForAddMoney && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+          onClick={handleCloseAddMoneyModal}
+        >
+          <div 
+            className="bg-white dark:bg-[#111827] rounded-xl p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Cộng thêm tiền</h2>
+              <button
+                onClick={handleCloseAddMoneyModal}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 -mr-2 touch-manipulation"
+                aria-label="Đóng"
+                disabled={isAddingMoney}
+              >
+                <span className="material-symbols-outlined text-2xl">close</span>
+              </button>
+            </div>
+            {error && (
+              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 mb-4">
+                <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+              </div>
+            )}
+            <div className="space-y-4 sm:space-y-5">
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Nhân viên</p>
+                <p className="text-base font-semibold text-gray-900 dark:text-white">{selectedShiftForAddMoney.staffName}</p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Tiền giao ca hiện tại</p>
+                <p className="text-base font-semibold text-gray-900 dark:text-white">
+                  {selectedShiftForAddMoney.tienGiaoCa.toLocaleString('vi-VN')}đ
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm sm:text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Số tiền cộng thêm (VNĐ) *
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={addMoneyAmount}
+                  onChange={(e) => setAddMoneyAmount(e.target.value)}
+                  placeholder="Nhập số tiền cộng thêm"
+                  className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary h-12 sm:h-14 p-3 sm:p-4 text-base sm:text-lg font-normal leading-normal touch-manipulation"
+                  disabled={isAddingMoney}
+                />
+              </div>
+              {addMoneyAmount && !isNaN(parseFloat(addMoneyAmount)) && parseFloat(addMoneyAmount) > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Tiền giao ca sau khi cộng</p>
+                  <p className="text-base font-semibold text-blue-600 dark:text-blue-400">
+                    {(selectedShiftForAddMoney.tienGiaoCa + parseFloat(addMoneyAmount)).toLocaleString('vi-VN')}đ
+                  </p>
+                </div>
+              )}
+              <div className="flex gap-3 pt-2 sm:pt-4 pb-2">
+                <button
+                  onClick={handleCloseAddMoneyModal}
+                  className="flex-1 h-12 sm:h-14 px-4 rounded-lg border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-base sm:text-lg hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700 transition-colors touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isAddingMoney}
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleAddMoney}
+                  className="flex-1 h-12 sm:h-14 px-4 rounded-lg bg-green-600 text-white font-bold text-base sm:text-lg hover:bg-green-700 active:bg-green-800 transition-colors touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  disabled={isAddingMoney || !addMoneyAmount}
+                >
+                  {isAddingMoney ? (
+                    <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  ) : (
+                    'Xác nhận'
                   )}
                 </button>
               </div>

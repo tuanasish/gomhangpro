@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getShiftsList, getShiftById, getCurrentShift, createShift, startShift, endShift } from '../controllers/shifts.controller.js';
+import { getShiftsList, getShiftById, getCurrentShift, createShift, startShift, endShift, addMoneyToShift } from '../controllers/shifts.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 const router = Router();
@@ -45,6 +45,13 @@ router.put('/:id/start', authenticate, authorize('worker'), startShift);
  * @access  Private (Worker)
  */
 router.put('/:id/end', authenticate, authorize('worker'), endShift);
+
+/**
+ * @route   PUT /api/shifts/:id/add-money
+ * @desc    Cộng thêm tiền vào ca
+ * @access  Private (Manager/Admin)
+ */
+router.put('/:id/add-money', authenticate, authorize('manager', 'admin'), addMoneyToShift);
 
 export default router;
 
