@@ -541,7 +541,7 @@ const ManagerOrdersPage: React.FC = () => {
                               onClick={() => handleViewOrder(order.id)}
                               className="flex-1 min-w-[100px] flex items-center justify-center h-10 px-4 rounded-lg bg-primary-light text-primary-dark dark:bg-primary/20 dark:text-primary-light text-sm font-bold hover:bg-primary/20 transition-colors"
                             >
-                              Xem chi tiết
+                              Chi tiết
                             </button>
                             {user?.role === 'admin' && (
                               <button

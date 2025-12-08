@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RoutePath } from '../../types';
 import BottomNavAdmin from '../../components/manager/BottomNavAdmin';
+import BottomNavWorker from '../../components/worker/BottomNavWorker';
 import { useAuth } from '../../src/hooks/useAuth';
 import Avatar from '../../src/components/common/Avatar';
 import * as countersService from '../../src/services/counters.service';
@@ -272,7 +273,9 @@ const AdminCountersPage: React.FC = () => {
                         <th className="px-6 py-3" scope="col">Tên quầy</th>
                         <th className="px-6 py-3" scope="col">Địa chỉ</th>
                         <th className="px-6 py-3" scope="col">Ngày tạo</th>
-                        <th className="px-6 py-3 text-center" scope="col">Thao tác</th>
+                        {user?.role !== 'worker' && (
+                          <th className="px-6 py-3 text-center" scope="col">Thao tác</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -289,18 +292,22 @@ const AdminCountersPage: React.FC = () => {
                         {new Date(counter.createdAt).toLocaleDateString('vi-VN')}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => handleEditCounter(counter)}
-                          className="font-medium text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-white mr-4"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCounter(counter.id)}
-                          className="font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                        >
-                          Xóa
-                        </button>
+                        {user?.role !== 'worker' && (
+                          <>
+                            <button
+                              onClick={() => handleEditCounter(counter)}
+                              className="font-medium text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-white mr-4"
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCounter(counter.id)}
+                              className="font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              Xóa
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -329,20 +336,22 @@ const AdminCountersPage: React.FC = () => {
                         Ngày tạo: {new Date(counter.createdAt).toLocaleDateString('vi-VN')}
                       </p>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditCounter(counter)}
-                        className="text-primary hover:text-primary-dark"
-                      >
-                        <span className="material-symbols-outlined">edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCounter(counter.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <span className="material-symbols-outlined">delete</span>
-                      </button>
-                    </div>
+                    {user?.role !== 'worker' && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditCounter(counter)}
+                          className="text-primary hover:text-primary-dark"
+                        >
+                          <span className="material-symbols-outlined">edit</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCounter(counter.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <span className="material-symbols-outlined">delete</span>
+                        </button>
+                      </div>
+                    )}
                     </div>
                   </div>
                 ))}
@@ -424,7 +433,7 @@ const AdminCountersPage: React.FC = () => {
         </div>
       )}
       
-      <BottomNavAdmin />
+      {user?.role === 'worker' ? <BottomNavWorker /> : <BottomNavAdmin />}
     </div>
   );
 };

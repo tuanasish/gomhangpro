@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { ApiResponse, Shift } from '../types/index.js';
+import { ApiResponse, Shift, ShiftMoneyAddition } from '../types/index.js';
 import { supabase } from '../config/supabase.js';
 
 /**
@@ -270,6 +270,7 @@ export async function createShift(
       date: date,
       start_time: startTime.toISOString(),
       tien_giao_ca: tienGiaoCa,
+      tien_giao_ca_ban_dau: tienGiaoCa, // Lưu tiền ban đầu
       tong_tien_hang_da_tra: 0,
       quy_con_lai: tienGiaoCa, // Quỹ còn lại ban đầu = tiền giao ca
       status: 'active', // Tạo ca là active luôn, worker sẽ "xác nhận" bằng cách bắt đầu làm việc
@@ -580,12 +581,63 @@ export async function endShift(
 }
 
 /**
- * Cộng thêm tiền vào ca (Admin/Manager)
+ * Tính lại tiền giao ca dựa trên lịch sử thêm tiền
+ */
+async function recalculateShiftMoney(shiftId: string): Promise<void> {
+  // Lấy tổng các lần thêm tiền
+  const { data: additions, error: additionsError } = await supabase
+    .from('shift_money_additions')
+    .select('amount')
+    .eq('shift_id', shiftId);
+
+  if (additionsError) {
+    console.error('Get money additions error:', additionsError);
+    throw new Error('Lỗi lấy lịch sử thêm tiền');
+  }
+
+  const tongTienDaThem = additions?.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) || 0;
+
+  // Lấy ca hiện tại
+  const { data: shift, error: shiftError } = await supabase
+    .from('shifts')
+    .select('tien_giao_ca_ban_dau, tong_tien_hang_da_tra')
+    .eq('id', shiftId)
+    .single();
+
+  if (shiftError || !shift) {
+    throw new Error('Không tìm thấy ca làm việc');
+  }
+
+  // Tính tiền giao ca mới = tiền ban đầu + tổng đã thêm
+  const tienGiaoCaBanDau = parseFloat(shift.tien_giao_ca_ban_dau || '0');
+  const tienGiaoCaMoi = tienGiaoCaBanDau + tongTienDaThem;
+  const tongTienHangDaTra = parseFloat(shift.tong_tien_hang_da_tra || '0');
+  const quyConLai = tienGiaoCaMoi - tongTienHangDaTra;
+
+  // Cập nhật ca
+  const { error: updateError } = await supabase
+    .from('shifts')
+    .update({
+      tien_giao_ca: tienGiaoCaMoi.toString(),
+      quy_con_lai: quyConLai.toString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', shiftId);
+
+  if (updateError) {
+    console.error('Update shift error:', updateError);
+    throw new Error('Lỗi cập nhật ca làm việc');
+  }
+}
+
+/**
+ * Cộng thêm tiền vào ca (Admin/Manager) - Lưu vào lịch sử
  */
 export async function addMoneyToShift(req: Request, res: Response<ApiResponse<Shift>>): Promise<void> {
   try {
     const { id } = req.params;
-    const { amount } = req.body;
+    const { amount, note } = req.body;
+    const userId = (req as any).user?.id; // Lấy user ID từ middleware
 
     if (!amount || typeof amount !== 'number' || amount <= 0) {
       res.status(400).json({
@@ -595,14 +647,10 @@ export async function addMoneyToShift(req: Request, res: Response<ApiResponse<Sh
       return;
     }
 
-    // Lấy ca hiện tại
+    // Kiểm tra ca tồn tại
     const { data: shift, error: shiftError } = await supabase
       .from('shifts')
-      .select(`
-        *,
-        staff:users!shifts_staff_id_fkey(id, name),
-        counter:counters!shifts_counter_id_fkey(id, name)
-      `)
+      .select('id, status')
       .eq('id', id)
       .single();
 
@@ -614,32 +662,53 @@ export async function addMoneyToShift(req: Request, res: Response<ApiResponse<Sh
       return;
     }
 
-    // Tính toán lại
-    const tienGiaoCaMoi = parseFloat(shift.tien_giao_ca) + amount;
-    const tongTienHangDaTra = parseFloat(shift.tong_tien_hang_da_tra || 0);
-    const quyConLai = tienGiaoCaMoi - tongTienHangDaTra;
+    if (shift.status !== 'active') {
+      res.status(400).json({
+        success: false,
+        error: 'Chỉ có thể thêm tiền vào ca đang hoạt động',
+      });
+      return;
+    }
 
-    // Cập nhật ca
-    const { data: updatedShift, error: updateError } = await supabase
-      .from('shifts')
-      .update({
-        tien_giao_ca: tienGiaoCaMoi.toString(),
-        quy_con_lai: quyConLai.toString(),
-        updated_at: new Date().toISOString(),
+    // Lưu vào lịch sử
+    const { data: newAddition, error: insertError } = await supabase
+      .from('shift_money_additions')
+      .insert({
+        shift_id: id,
+        amount: amount.toString(),
+        note: note || null,
+        created_by: userId || null,
       })
-      .eq('id', id)
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Insert money addition error:', insertError);
+      res.status(500).json({
+        success: false,
+        error: 'Lỗi lưu lịch sử thêm tiền',
+      });
+      return;
+    }
+
+    // Tính lại tiền giao ca
+    await recalculateShiftMoney(id);
+
+    // Lấy lại ca với thông tin đầy đủ
+    const { data: updatedShift, error: fetchError } = await supabase
+      .from('shifts')
       .select(`
         *,
         staff:users!shifts_staff_id_fkey(id, name),
         counter:counters!shifts_counter_id_fkey(id, name)
       `)
+      .eq('id', id)
       .single();
 
-    if (updateError || !updatedShift) {
-      console.error('Update shift error:', updateError);
+    if (fetchError || !updatedShift) {
       res.status(500).json({
         success: false,
-        error: 'Lỗi cập nhật ca làm việc',
+        error: 'Lỗi lấy thông tin ca sau khi cập nhật',
       });
       return;
     }
@@ -667,7 +736,407 @@ export async function addMoneyToShift(req: Request, res: Response<ApiResponse<Sh
     console.error('Add money to shift error:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Lỗi cộng thêm tiền',
+      error: error.message || 'Lỗi cập nhật tiền ca làm việc',
+    });
+  }
+}
+
+/**
+ * Cập nhật trực tiếp tiền giao ca (Admin/Manager)
+ */
+export async function updateShiftMoney(req: Request, res: Response<ApiResponse<Shift>>): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { tienGiaoCa } = req.body;
+
+    if (tienGiaoCa === undefined || tienGiaoCa === null || typeof tienGiaoCa !== 'number' || tienGiaoCa < 0) {
+      res.status(400).json({
+        success: false,
+        error: 'Số tiền giao ca phải lớn hơn hoặc bằng 0',
+      });
+      return;
+    }
+
+    // Lấy ca hiện tại
+    const { data: shift, error: shiftError } = await supabase
+      .from('shifts')
+      .select(`
+        *,
+        staff:users!shifts_staff_id_fkey(id, name),
+        counter:counters!shifts_counter_id_fkey(id, name)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (shiftError || !shift) {
+      res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy ca làm việc',
+      });
+      return;
+    }
+
+    // Tính toán lại quỹ còn lại
+    const tongTienHangDaTra = parseFloat(shift.tong_tien_hang_da_tra || 0);
+    const quyConLai = tienGiaoCa - tongTienHangDaTra;
+
+    // Cập nhật ca
+    const { data: updatedShift, error: updateError } = await supabase
+      .from('shifts')
+      .update({
+        tien_giao_ca: tienGiaoCa.toString(),
+        quy_con_lai: quyConLai.toString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select(`
+        *,
+        staff:users!shifts_staff_id_fkey(id, name),
+        counter:counters!shifts_counter_id_fkey(id, name)
+      `)
+      .single();
+
+    if (updateError || !updatedShift) {
+      console.error('Update shift money error:', updateError);
+      res.status(500).json({
+        success: false,
+        error: 'Lỗi cập nhật tiền giao ca',
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: updatedShift.id,
+        staffId: updatedShift.staff_id,
+        staffName: updatedShift.staff?.name,
+        counterId: updatedShift.counter_id || undefined,
+        counterName: updatedShift.counter?.name,
+        date: updatedShift.date,
+        startTime: new Date(updatedShift.start_time),
+        endTime: updatedShift.end_time ? new Date(updatedShift.end_time) : undefined,
+        tienGiaoCa: parseFloat(updatedShift.tien_giao_ca),
+        tongTienHangDaTra: parseFloat(updatedShift.tong_tien_hang_da_tra || 0),
+        quyConLai: parseFloat(updatedShift.quy_con_lai || 0),
+        status: updatedShift.status,
+        createdAt: new Date(updatedShift.created_at),
+        updatedAt: new Date(updatedShift.updated_at),
+      },
+    });
+  } catch (error: any) {
+    console.error('Update shift money error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Lỗi cập nhật tiền giao ca',
+    });
+  }
+}
+
+/**
+ * Lấy lịch sử thêm tiền của ca
+ */
+export async function getShiftMoneyAdditions(req: Request<{ id: string }>, res: Response<ApiResponse<ShiftMoneyAddition[]>>): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    // Kiểm tra ca tồn tại
+    const { data: shift, error: shiftError } = await supabase
+      .from('shifts')
+      .select('id')
+      .eq('id', id)
+      .single();
+
+    if (shiftError || !shift) {
+      res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy ca làm việc',
+      });
+      return;
+    }
+
+    // Lấy lịch sử thêm tiền
+    const { data: additions, error } = await supabase
+      .from('shift_money_additions')
+      .select('*')
+      .eq('shift_id', id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Get money additions error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Lỗi lấy lịch sử thêm tiền',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: additions.map((item: any) => ({
+        id: item.id,
+        shiftId: item.shift_id,
+        amount: parseFloat(item.amount),
+        note: item.note || undefined,
+        createdBy: item.created_by || undefined,
+        createdAt: new Date(item.created_at),
+        updatedAt: new Date(item.updated_at),
+      })),
+    });
+  } catch (error: any) {
+    console.error('Get money additions error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Lỗi lấy lịch sử thêm tiền',
+    });
+  }
+}
+
+/**
+ * Cập nhật một lần thêm tiền trong lịch sử
+ */
+export async function updateShiftMoneyAddition(
+  req: Request<{ id: string; additionId: string }, ApiResponse<Shift>, { amount?: number; note?: string }>,
+  res: Response
+): Promise<void> {
+  try {
+    const { id, additionId } = req.params;
+    const { amount, note } = req.body;
+
+    // Kiểm tra ca tồn tại và đang active
+    const { data: shift, error: shiftError } = await supabase
+      .from('shifts')
+      .select('id, status')
+      .eq('id', id)
+      .single();
+
+    if (shiftError || !shift) {
+      res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy ca làm việc',
+      });
+      return;
+    }
+
+    if (shift.status !== 'active') {
+      res.status(400).json({
+        success: false,
+        error: 'Chỉ có thể sửa lịch sử thêm tiền của ca đang hoạt động',
+      });
+      return;
+    }
+
+    // Kiểm tra lần thêm tiền tồn tại
+    const { data: existingAddition, error: checkError } = await supabase
+      .from('shift_money_additions')
+      .select('*')
+      .eq('id', additionId)
+      .eq('shift_id', id)
+      .single();
+
+    if (checkError || !existingAddition) {
+      res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy lần thêm tiền',
+      });
+      return;
+    }
+
+    // Cập nhật
+    const updateData: any = {};
+    if (amount !== undefined) {
+      if (typeof amount !== 'number' || amount <= 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Số tiền phải lớn hơn 0',
+        });
+        return;
+      }
+      updateData.amount = amount.toString();
+    }
+    if (note !== undefined) {
+      updateData.note = note || null;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      res.status(400).json({
+        success: false,
+        error: 'Không có thông tin nào để cập nhật',
+      });
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from('shift_money_additions')
+      .update(updateData)
+      .eq('id', additionId);
+
+    if (updateError) {
+      console.error('Update money addition error:', updateError);
+      res.status(500).json({
+        success: false,
+        error: 'Lỗi cập nhật lịch sử thêm tiền',
+      });
+      return;
+    }
+
+    // Tính lại tiền giao ca
+    await recalculateShiftMoney(id);
+
+    // Lấy lại ca với thông tin đầy đủ
+    const { data: updatedShift, error: fetchError } = await supabase
+      .from('shifts')
+      .select(`
+        *,
+        staff:users!shifts_staff_id_fkey(id, name),
+        counter:counters!shifts_counter_id_fkey(id, name)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !updatedShift) {
+      res.status(500).json({
+        success: false,
+        error: 'Lỗi lấy thông tin ca sau khi cập nhật',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: updatedShift.id,
+        staffId: updatedShift.staff_id,
+        staffName: updatedShift.staff?.name,
+        counterId: updatedShift.counter_id || undefined,
+        counterName: updatedShift.counter?.name,
+        date: updatedShift.date,
+        startTime: new Date(updatedShift.start_time),
+        endTime: updatedShift.end_time ? new Date(updatedShift.end_time) : undefined,
+        tienGiaoCa: parseFloat(updatedShift.tien_giao_ca),
+        tongTienHangDaTra: parseFloat(updatedShift.tong_tien_hang_da_tra || 0),
+        quyConLai: parseFloat(updatedShift.quy_con_lai || 0),
+        status: updatedShift.status,
+        createdAt: new Date(updatedShift.created_at),
+        updatedAt: new Date(updatedShift.updated_at),
+      },
+    });
+  } catch (error: any) {
+    console.error('Update money addition error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Lỗi cập nhật lịch sử thêm tiền',
+    });
+  }
+}
+
+/**
+ * Xóa một lần thêm tiền trong lịch sử
+ */
+export async function deleteShiftMoneyAddition(req: Request<{ id: string; additionId: string }>, res: Response<ApiResponse<Shift>>): Promise<void> {
+  try {
+    const { id, additionId } = req.params;
+
+    // Kiểm tra ca tồn tại và đang active
+    const { data: shift, error: shiftError } = await supabase
+      .from('shifts')
+      .select('id, status')
+      .eq('id', id)
+      .single();
+
+    if (shiftError || !shift) {
+      res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy ca làm việc',
+      });
+      return;
+    }
+
+    if (shift.status !== 'active') {
+      res.status(400).json({
+        success: false,
+        error: 'Chỉ có thể xóa lịch sử thêm tiền của ca đang hoạt động',
+      });
+      return;
+    }
+
+    // Kiểm tra lần thêm tiền tồn tại
+    const { data: existingAddition, error: checkError } = await supabase
+      .from('shift_money_additions')
+      .select('id')
+      .eq('id', additionId)
+      .eq('shift_id', id)
+      .single();
+
+    if (checkError || !existingAddition) {
+      res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy lần thêm tiền',
+      });
+      return;
+    }
+
+    // Xóa
+    const { error: deleteError } = await supabase
+      .from('shift_money_additions')
+      .delete()
+      .eq('id', additionId);
+
+    if (deleteError) {
+      console.error('Delete money addition error:', deleteError);
+      res.status(500).json({
+        success: false,
+        error: 'Lỗi xóa lịch sử thêm tiền',
+      });
+      return;
+    }
+
+    // Tính lại tiền giao ca
+    await recalculateShiftMoney(id);
+
+    // Lấy lại ca với thông tin đầy đủ
+    const { data: updatedShift, error: fetchError } = await supabase
+      .from('shifts')
+      .select(`
+        *,
+        staff:users!shifts_staff_id_fkey(id, name),
+        counter:counters!shifts_counter_id_fkey(id, name)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !updatedShift) {
+      res.status(500).json({
+        success: false,
+        error: 'Lỗi lấy thông tin ca sau khi xóa',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: updatedShift.id,
+        staffId: updatedShift.staff_id,
+        staffName: updatedShift.staff?.name,
+        counterId: updatedShift.counter_id || undefined,
+        counterName: updatedShift.counter?.name,
+        date: updatedShift.date,
+        startTime: new Date(updatedShift.start_time),
+        endTime: updatedShift.end_time ? new Date(updatedShift.end_time) : undefined,
+        tienGiaoCa: parseFloat(updatedShift.tien_giao_ca),
+        tongTienHangDaTra: parseFloat(updatedShift.tong_tien_hang_da_tra || 0),
+        quyConLai: parseFloat(updatedShift.quy_con_lai || 0),
+        status: updatedShift.status,
+        createdAt: new Date(updatedShift.created_at),
+        updatedAt: new Date(updatedShift.updated_at),
+      },
+    });
+  } catch (error: any) {
+    console.error('Delete money addition error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Lỗi xóa lịch sử thêm tiền',
     });
   }
 }

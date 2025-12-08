@@ -79,6 +79,7 @@ export interface Customer {
   name: string;
   phone?: string;
   address?: string;
+  defaultTienCongGom?: number; // Tiền công gom mặc định cho khách hàng này
   createdAt: Date;
   updatedAt: Date;
 }
@@ -88,6 +89,16 @@ export interface Counter {
   name: string;
   address?: string;
   isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ShiftMoneyAddition {
+  id: string;
+  shiftId: string;
+  amount: number; // Số tiền đã thêm (luôn dương)
+  note?: string;
+  createdBy?: string; // User ID
   createdAt: Date;
   updatedAt: Date;
 }

@@ -129,13 +129,84 @@ export async function endShift(shiftId: string): Promise<Shift> {
 }
 
 /**
- * Cộng thêm tiền vào ca (Admin/Manager)
+ * Cộng thêm tiền vào ca (Admin/Manager) - Lưu vào lịch sử
  */
-export async function addMoneyToShift(shiftId: string, amount: number): Promise<Shift> {
-  const response = await apiClient.put<ApiResponse<Shift>>(`/shifts/${shiftId}/add-money`, { amount });
+export async function addMoneyToShift(shiftId: string, amount: number, note?: string): Promise<Shift> {
+  const response = await apiClient.put<ApiResponse<Shift>>(`/shifts/${shiftId}/add-money`, { amount, note });
 
   if (!response.data.success || !response.data.data) {
-    throw new Error(response.data.error || 'Không thể cộng thêm tiền');
+    throw new Error(response.data.error || 'Không thể cập nhật tiền');
+  }
+
+  return response.data.data;
+}
+
+/**
+ * Cập nhật trực tiếp tiền giao ca (Admin/Manager)
+ */
+export async function updateShiftMoney(shiftId: string, tienGiaoCa: number): Promise<Shift> {
+  const response = await apiClient.put<ApiResponse<Shift>>(`/shifts/${shiftId}/money`, { tienGiaoCa });
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error(response.data.error || 'Không thể cập nhật tiền giao ca');
+  }
+
+  return response.data.data;
+}
+
+export interface ShiftMoneyAddition {
+  id: string;
+  shiftId: string;
+  amount: number;
+  note?: string;
+  createdBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Lấy lịch sử thêm tiền của ca
+ */
+export async function getShiftMoneyAdditions(shiftId: string): Promise<ShiftMoneyAddition[]> {
+  const response = await apiClient.get<ApiResponse<ShiftMoneyAddition[]>>(`/shifts/${shiftId}/money-additions`);
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error(response.data.error || 'Không thể lấy lịch sử thêm tiền');
+  }
+
+  return response.data.data;
+}
+
+/**
+ * Cập nhật một lần thêm tiền trong lịch sử
+ */
+export async function updateShiftMoneyAddition(
+  shiftId: string,
+  additionId: string,
+  data: { amount?: number; note?: string }
+): Promise<Shift> {
+  const response = await apiClient.put<ApiResponse<Shift>>(
+    `/shifts/${shiftId}/money-additions/${additionId}`,
+    data
+  );
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error(response.data.error || 'Không thể cập nhật lịch sử thêm tiền');
+  }
+
+  return response.data.data;
+}
+
+/**
+ * Xóa một lần thêm tiền trong lịch sử
+ */
+export async function deleteShiftMoneyAddition(shiftId: string, additionId: string): Promise<Shift> {
+  const response = await apiClient.delete<ApiResponse<Shift>>(
+    `/shifts/${shiftId}/money-additions/${additionId}`
+  );
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error(response.data.error || 'Không thể xóa lịch sử thêm tiền');
   }
 
   return response.data.data;

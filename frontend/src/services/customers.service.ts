@@ -6,6 +6,7 @@ export interface Customer {
   name: string;
   phone?: string;
   address?: string;
+  defaultTienCongGom?: number; // Tiền công gom mặc định cho khách hàng này
   createdAt: Date;
   updatedAt: Date;
 }
@@ -14,12 +15,14 @@ export interface CreateCustomerRequest {
   name: string;
   phone?: string;
   address?: string;
+  defaultTienCongGom?: number;
 }
 
 export interface UpdateCustomerRequest {
   name?: string;
   phone?: string;
   address?: string;
+  defaultTienCongGom?: number;
 }
 
 /**
@@ -91,8 +94,10 @@ export async function deleteCustomer(customerId: string): Promise<void> {
 
 /**
  * Tìm kiếm khách hàng theo tên hoặc số điện thoại
+ * Tìm trong cả tên và số điện thoại
  */
 export async function searchCustomers(query: string): Promise<Customer[]> {
+  // Search trong cả name và phone
   return getCustomersList(query, query);
 }
 

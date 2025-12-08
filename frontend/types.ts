@@ -79,6 +79,8 @@ export enum RoutePath {
   WORKER_END_SHIFT = '/worker/end',
   WORKER_HISTORY = '/worker/history',
   WORKER_ACCOUNT = '/worker/account',
+  WORKER_CUSTOMERS = '/worker/customers',
+  WORKER_COUNTERS = '/worker/counters',
   MANAGER_DASHBOARD = '/manager/dashboard',
   MANAGER_ORDERS = '/manager/orders',
   ADMIN_SHIFTS = '/admin/shifts',

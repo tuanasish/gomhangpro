@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RoutePath } from '../../types';
+import BottomNavWorker from '../../components/worker/BottomNavWorker';
 import { useAuth } from '../../src/hooks/useAuth';
 import Avatar from '../../src/components/common/Avatar';
 import * as shiftsService from '../../src/services/shifts.service';
@@ -240,28 +241,7 @@ const WorkerHomePage: React.FC = () => {
             </main>
 
             {/* Bottom Nav */}
-            <nav className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex h-16 justify-around items-center px-4">
-                <a className="flex flex-col items-center justify-center text-primary w-20 gap-1" href="#">
-                  <span className="material-symbols-outlined fill">home</span>
-                  <span className="text-xs font-bold">Trang chính</span>
-                </a>
-                <button
-                  onClick={() => navigate(RoutePath.WORKER_HISTORY)}
-                  className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 w-20 gap-1 hover:text-primary transition-colors"
-                >
-                  <span className="material-symbols-outlined">history</span>
-                  <span className="text-xs font-medium">Lịch sử</span>
-                </button>
-                <button
-                  onClick={() => navigate(RoutePath.WORKER_ACCOUNT)}
-                  className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 w-20 gap-1 hover:text-primary transition-colors"
-                >
-                  <span className="material-symbols-outlined">person</span>
-                  <span className="text-xs font-medium">Tài khoản</span>
-                </button>
-              </div>
-            </nav>
+            <BottomNavWorker />
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RoutePath } from '../../types';
 import BottomNavAdmin from '../../components/manager/BottomNavAdmin';
+import BottomNavWorker from '../../components/worker/BottomNavWorker';
 import { useAuth } from '../../src/hooks/useAuth';
 import Avatar from '../../src/components/common/Avatar';
 import * as customersService from '../../src/services/customers.service';
@@ -18,6 +19,7 @@ const AdminCustomersPage: React.FC = () => {
     name: '',
     phone: '',
     address: '',
+    defaultTienCongGom: '',
   });
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +57,7 @@ const AdminCustomersPage: React.FC = () => {
         name: formData.name.trim(),
         phone: formData.phone.trim() || undefined,
         address: formData.address.trim() || undefined,
+        defaultTienCongGom: formData.defaultTienCongGom ? Number(formData.defaultTienCongGom) : undefined,
       });
       await loadCustomers();
       handleCloseModal();
@@ -73,6 +76,7 @@ const AdminCustomersPage: React.FC = () => {
       name: customer.name,
       phone: customer.phone || '',
       address: customer.address || '',
+      defaultTienCongGom: customer.defaultTienCongGom?.toString() || '',
     });
     setShowCreateModal(true);
     setError(null);
@@ -93,6 +97,7 @@ const AdminCustomersPage: React.FC = () => {
         name: formData.name.trim(),
         phone: formData.phone.trim() || undefined,
         address: formData.address.trim() || undefined,
+        defaultTienCongGom: formData.defaultTienCongGom ? Number(formData.defaultTienCongGom) : undefined,
       });
       await loadCustomers();
       handleCloseModal();
@@ -122,7 +127,7 @@ const AdminCustomersPage: React.FC = () => {
   const handleCloseModal = () => {
     setShowCreateModal(false);
     setEditingCustomer(null);
-    setFormData({ name: '', phone: '', address: '' });
+    setFormData({ name: '', phone: '', address: '', defaultTienCongGom: '' });
   };
 
   return (
@@ -277,7 +282,9 @@ const AdminCustomersPage: React.FC = () => {
                         <th className="px-6 py-3" scope="col">Số điện thoại</th>
                         <th className="px-6 py-3" scope="col">Địa chỉ</th>
                         <th className="px-6 py-3" scope="col">Ngày tạo</th>
-                        <th className="px-6 py-3 text-center" scope="col">Thao tác</th>
+                        {user?.role !== 'worker' && (
+                          <th className="px-6 py-3 text-center" scope="col">Thao tác</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -295,18 +302,22 @@ const AdminCustomersPage: React.FC = () => {
                         {new Date(customer.createdAt).toLocaleDateString('vi-VN')}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => handleEditCustomer(customer)}
-                          className="font-medium text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-white mr-4"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCustomer(customer.id)}
-                          className="font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                        >
-                          Xóa
-                        </button>
+                        {user?.role !== 'worker' && (
+                          <>
+                            <button
+                              onClick={() => handleEditCustomer(customer)}
+                              className="font-medium text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-white mr-4"
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCustomer(customer.id)}
+                              className="font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              Xóa
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -340,20 +351,22 @@ const AdminCustomersPage: React.FC = () => {
                         Ngày tạo: {new Date(customer.createdAt).toLocaleDateString('vi-VN')}
                       </p>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditCustomer(customer)}
-                        className="text-primary hover:text-primary-dark"
-                      >
-                        <span className="material-symbols-outlined">edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCustomer(customer.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <span className="material-symbols-outlined">delete</span>
-                      </button>
-                    </div>
+                    {user?.role !== 'worker' && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditCustomer(customer)}
+                          className="text-primary hover:text-primary-dark"
+                        >
+                          <span className="material-symbols-outlined">edit</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCustomer(customer.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <span className="material-symbols-outlined">delete</span>
+                        </button>
+                      </div>
+                    )}
                     </div>
                   </div>
                 ))}
@@ -417,6 +430,24 @@ const AdminCustomersPage: React.FC = () => {
                   disabled={isSubmitting}
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Công gom mặc định (VNĐ)
+                </label>
+                <input
+                  type="number"
+                  value={formData.defaultTienCongGom}
+                  onChange={(e) => setFormData({ ...formData, defaultTienCongGom: e.target.value })}
+                  placeholder="Nhập công gom mặc định"
+                  className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary h-12 p-3 text-base font-normal leading-normal"
+                  disabled={isSubmitting}
+                  min="0"
+                  step="1000"
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Công gom này sẽ tự động điền khi chọn khách hàng này ở trang tạo đơn
+                </p>
+              </div>
               {error && (
                 <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3">
                   <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
@@ -447,7 +478,7 @@ const AdminCustomersPage: React.FC = () => {
         </div>
       )}
       
-      <BottomNavAdmin />
+      {user?.role === 'worker' ? <BottomNavWorker /> : <BottomNavAdmin />}
     </div>
   );
 };

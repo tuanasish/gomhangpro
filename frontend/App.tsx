@@ -107,6 +107,26 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path={RoutePath.WORKER_CUSTOMERS}
+            element={
+              <ProtectedRoute requiredRole="worker">
+                <Suspense fallback={<PageLoader />}>
+                  <AdminCustomersPage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={RoutePath.WORKER_COUNTERS}
+            element={
+              <ProtectedRoute requiredRole="worker">
+                <Suspense fallback={<PageLoader />}>
+                  <AdminCountersPage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
           
           {/* Manager/Admin Routes */}
           <Route

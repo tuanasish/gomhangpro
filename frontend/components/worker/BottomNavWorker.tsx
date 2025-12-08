@@ -2,40 +2,35 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { RoutePath } from '../../types';
 
-const BottomNavAdmin: React.FC = () => {
+const BottomNavWorker: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const navItems = [
     {
-      path: RoutePath.MANAGER_DASHBOARD,
-      icon: 'dashboard',
-      label: 'Dashboard',
+      path: RoutePath.WORKER_HOME,
+      icon: 'home',
+      label: 'Trang chính',
     },
     {
-      path: RoutePath.ADMIN_SHIFTS,
-      icon: 'work_history',
-      label: 'Ca làm việc',
+      path: RoutePath.WORKER_HISTORY,
+      icon: 'history',
+      label: 'Lịch sử',
     },
     {
-      path: RoutePath.ADMIN_STAFF,
-      icon: 'groups',
-      label: 'Nhân viên',
+      path: RoutePath.WORKER_CUSTOMERS,
+      icon: 'people',
+      label: 'Khách hàng',
     },
     {
-      path: RoutePath.MANAGER_ORDERS,
-      icon: 'receipt_long',
-      label: 'Đơn hàng',
-    },
-    {
-      path: RoutePath.ADMIN_COUNTERS,
+      path: RoutePath.WORKER_COUNTERS,
       icon: 'store',
       label: 'Quầy',
     },
     {
-      path: RoutePath.ADMIN_CUSTOMERS,
-      icon: 'people',
-      label: 'Khách hàng',
+      path: RoutePath.WORKER_ACCOUNT,
+      icon: 'person',
+      label: 'Tài khoản',
     },
   ];
 
@@ -89,4 +84,5 @@ const BottomNavAdmin: React.FC = () => {
   );
 };
 
-export default BottomNavAdmin;
+export default BottomNavWorker;
+

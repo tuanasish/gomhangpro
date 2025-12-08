@@ -8,7 +8,7 @@ import Avatar from '../../src/components/common/Avatar';
 import * as shiftsService from '../../src/services/shifts.service';
 import * as staffService from '../../src/services/staff.service';
 import * as ordersService from '../../src/services/orders.service';
-import { Shift } from '../../src/services/shifts.service';
+import { Shift, ShiftMoneyAddition } from '../../src/services/shifts.service';
 import { Staff } from '../../src/services/staff.service';
 
 const AdminShiftsPage: React.FC = () => {
@@ -17,16 +17,22 @@ const AdminShiftsPage: React.FC = () => {
   const { showSuccess, showError, showWarning } = useNotification();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showAddMoneyModal, setShowAddMoneyModal] = useState(false);
+  const [showMoneyModal, setShowMoneyModal] = useState(false);
   const [selectedShift, setSelectedShift] = useState<string | null>(null);
-  const [selectedShiftForAddMoney, setSelectedShiftForAddMoney] = useState<Shift | null>(null);
+  const [selectedShiftForMoney, setSelectedShiftForMoney] = useState<Shift | null>(null);
   const [addMoneyAmount, setAddMoneyAmount] = useState('');
+  const [addMoneyNote, setAddMoneyNote] = useState('');
+  const [moneyAdditions, setMoneyAdditions] = useState<ShiftMoneyAddition[]>([]);
+  const [loadingAdditions, setLoadingAdditions] = useState(false);
+  const [editingAddition, setEditingAddition] = useState<ShiftMoneyAddition | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editNote, setEditNote] = useState('');
   const [shifts, setShifts] = useState<(Shift & { soDonHang?: number; tongTienHoaDon?: number })[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAddingMoney, setIsAddingMoney] = useState(false);
+  const [isProcessingMoney, setIsProcessingMoney] = useState(false);
 
   // Filter states
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
@@ -171,46 +177,150 @@ const AdminShiftsPage: React.FC = () => {
     setError(null);
   };
 
-  const handleOpenAddMoneyModal = (shift: Shift) => {
-    setSelectedShiftForAddMoney(shift);
-    setAddMoneyAmount('');
-    setShowAddMoneyModal(true);
+  const loadMoneyAdditions = useCallback(async (shiftId: string) => {
+    setLoadingAdditions(true);
+    try {
+      const additions = await shiftsService.getShiftMoneyAdditions(shiftId);
+      setMoneyAdditions(additions);
+    } catch (err: any) {
+      console.error('Load money additions error:', err);
+      setError(err.message || 'Lỗi tải lịch sử thêm tiền');
+    } finally {
+      setLoadingAdditions(false);
+    }
+  }, []);
+
+  const handleOpenMoneyModal = async (shift: Shift) => {
+    setSelectedShiftForMoney(shift);
+    setShowMoneyModal(true);
     setError(null);
+    setEditingAddition(null);
+    setEditAmount('');
+    setEditNote('');
+    setAddMoneyAmount('');
+    setAddMoneyNote('');
+    await loadMoneyAdditions(shift.id);
   };
 
-  const handleCloseAddMoneyModal = () => {
-    setShowAddMoneyModal(false);
-    setSelectedShiftForAddMoney(null);
+  const handleCloseMoneyModal = () => {
+    setShowMoneyModal(false);
+    setSelectedShiftForMoney(null);
+    setMoneyAdditions([]);
+    setEditingAddition(null);
+    setEditAmount('');
+    setEditNote('');
     setAddMoneyAmount('');
+    setAddMoneyNote('');
     setError(null);
   };
 
   const handleAddMoney = async () => {
-    if (!selectedShiftForAddMoney || !addMoneyAmount) {
+    if (!selectedShiftForMoney || !addMoneyAmount) {
       showWarning('Vui lòng nhập số tiền');
       return;
     }
 
     const amount = parseFloat(addMoneyAmount);
     if (isNaN(amount) || amount <= 0) {
-      showWarning('Vui lòng nhập số tiền hợp lệ');
+      showWarning('Số tiền phải lớn hơn 0');
       return;
     }
 
-    setIsAddingMoney(true);
+    setIsProcessingMoney(true);
     setError(null);
     try {
-      await shiftsService.addMoneyToShift(selectedShiftForAddMoney.id, amount);
+      await shiftsService.addMoneyToShift(selectedShiftForMoney.id, amount, addMoneyNote.trim() || undefined);
       await loadShifts();
-      handleCloseAddMoneyModal();
+      await loadMoneyAdditions(selectedShiftForMoney.id);
+      setAddMoneyAmount('');
+      setAddMoneyNote('');
       showSuccess(`Đã cộng thêm ${amount.toLocaleString('vi-VN')}đ vào ca`);
     } catch (err: any) {
       console.error('Add money error:', err);
-      const errorMessage = err.message || 'Lỗi cộng thêm tiền';
+      const errorMessage = err.message || 'Lỗi cập nhật tiền';
       setError(errorMessage);
       showError(errorMessage);
     } finally {
-      setIsAddingMoney(false);
+      setIsProcessingMoney(false);
+    }
+  };
+
+
+  const handleStartEditAddition = (addition: ShiftMoneyAddition) => {
+    setEditingAddition(addition);
+    setEditAmount(addition.amount.toString());
+    setEditNote(addition.note || '');
+  };
+
+  const handleCancelEditAddition = () => {
+    setEditingAddition(null);
+    setEditAmount('');
+    setEditNote('');
+  };
+
+  const handleSaveEditAddition = async () => {
+    if (!selectedShiftForMoney || !editingAddition || !editAmount) {
+      showWarning('Vui lòng nhập số tiền');
+      return;
+    }
+
+    const amount = parseFloat(editAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showWarning('Số tiền phải lớn hơn 0');
+      return;
+    }
+
+    setIsProcessingMoney(true);
+    setError(null);
+    try {
+      await shiftsService.updateShiftMoneyAddition(selectedShiftForMoney.id, editingAddition.id, {
+        amount,
+        note: editNote.trim() || undefined,
+      });
+      await loadShifts();
+      await loadMoneyAdditions(selectedShiftForMoney.id);
+      handleCancelEditAddition();
+      
+      const oldAmount = editingAddition.amount;
+      const diff = amount - oldAmount;
+      if (diff > 0) {
+        showSuccess(`Đã cộng thêm ${diff.toLocaleString('vi-VN')}đ (sửa từ ${oldAmount.toLocaleString('vi-VN')}đ thành ${amount.toLocaleString('vi-VN')}đ)`);
+      } else if (diff < 0) {
+        showSuccess(`Đã trừ ${Math.abs(diff).toLocaleString('vi-VN')}đ (sửa từ ${oldAmount.toLocaleString('vi-VN')}đ thành ${amount.toLocaleString('vi-VN')}đ)`);
+      } else {
+        showSuccess('Đã cập nhật ghi chú');
+      }
+    } catch (err: any) {
+      console.error('Edit addition error:', err);
+      const errorMessage = err.message || 'Lỗi cập nhật lần thêm tiền';
+      setError(errorMessage);
+      showError(errorMessage);
+    } finally {
+      setIsProcessingMoney(false);
+    }
+  };
+
+  const handleDeleteAddition = async (addition: ShiftMoneyAddition) => {
+    if (!selectedShiftForMoney) return;
+
+    if (!confirm(`Bạn có chắc chắn muốn xóa lần thêm ${addition.amount.toLocaleString('vi-VN')}đ?`)) {
+      return;
+    }
+
+    setIsProcessingMoney(true);
+    setError(null);
+    try {
+      await shiftsService.deleteShiftMoneyAddition(selectedShiftForMoney.id, addition.id);
+      await loadShifts();
+      await loadMoneyAdditions(selectedShiftForMoney.id);
+      showSuccess(`Đã xóa lần thêm tiền (trừ ${addition.amount.toLocaleString('vi-VN')}đ)`);
+    } catch (err: any) {
+      console.error('Delete addition error:', err);
+      const errorMessage = err.message || 'Lỗi xóa lần thêm tiền';
+      setError(errorMessage);
+      showError(errorMessage);
+    } finally {
+      setIsProcessingMoney(false);
     }
   };
 
@@ -498,18 +608,18 @@ const AdminShiftsPage: React.FC = () => {
                           )}
                           {shift.status === 'active' ? (
                             <button
-                              onClick={() => handleOpenAddMoneyModal(shift)}
-                              className="font-medium text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
-                              title="Cộng thêm tiền"
+                              onClick={() => handleOpenMoneyModal(shift)}
+                              className="font-medium text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-white"
+                              title="Quản lý tiền giao ca"
                             >
-                              + Tiền
+                              Sửa tiền
                             </button>
                           ) : (
                             <span
                               className="font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"
-                              title="Ca đã kết thúc, không thể thêm tiền"
+                              title="Ca đã kết thúc"
                             >
-                              + Tiền
+                              Sửa tiền
                             </span>
                           )}
                           <button
@@ -578,34 +688,33 @@ const AdminShiftsPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex flex-wrap gap-2 mt-4">
                     {shift.status === 'active' && (
                       <button
                         onClick={() => handleEndShift(shift.id, shift.staffName || 'N/A')}
-                        className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                        className="flex-1 min-w-[80px] flex items-center justify-center h-10 px-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                       >
                         Kết thúc
                       </button>
                     )}
                     {shift.status === 'active' ? (
                       <button
-                        onClick={() => handleOpenAddMoneyModal(shift)}
-                        className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 text-sm font-bold hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                        onClick={() => handleOpenMoneyModal(shift)}
+                        className="flex-1 min-w-[80px] flex items-center justify-center h-10 px-4 rounded-lg bg-primary-light text-primary-dark dark:bg-primary/20 dark:text-primary-light text-sm font-bold hover:bg-primary/20 transition-colors"
                       >
-                        + Thêm tiền
+                        Sửa tiền
                       </button>
                     ) : (
                       <button
                         disabled
-                        className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600 text-sm font-bold cursor-not-allowed"
-                        title="Ca đã kết thúc, không thể thêm tiền"
+                        className="flex-1 min-w-[80px] flex items-center justify-center h-10 px-4 rounded-lg bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600 text-sm font-bold cursor-not-allowed"
                       >
-                        + Thêm tiền
+                        Sửa tiền
                       </button>
                     )}
                     <button
                       onClick={() => setSelectedShift(shift.id)}
-                      className="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-primary-light text-primary-dark dark:bg-primary/20 dark:text-primary-light text-sm font-bold hover:bg-primary/20 transition-colors"
+                      className="flex-1 min-w-[80px] flex items-center justify-center h-10 px-4 rounded-lg bg-primary-light text-primary-dark dark:bg-primary/20 dark:text-primary-light text-sm font-bold hover:bg-primary/20 transition-colors"
                     >
                       Chi tiết
                     </button>
@@ -713,23 +822,23 @@ const AdminShiftsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Add Money Modal */}
-      {showAddMoneyModal && selectedShiftForAddMoney && (
+      {/* Money Management Modal - Gộp thêm tiền và sửa lịch sử */}
+      {showMoneyModal && selectedShiftForMoney && (
         <div 
           className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
-          onClick={handleCloseAddMoneyModal}
+          onClick={handleCloseMoneyModal}
         >
           <div 
-            className="bg-white dark:bg-[#111827] rounded-xl p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl"
+            className="bg-white dark:bg-[#111827] rounded-xl p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4 sm:mb-6">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Cộng thêm tiền</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Quản lý tiền giao ca</h2>
               <button
-                onClick={handleCloseAddMoneyModal}
+                onClick={handleCloseMoneyModal}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 -mr-2 touch-manipulation"
                 aria-label="Đóng"
-                disabled={isAddingMoney}
+                disabled={isProcessingMoney}
               >
                 <span className="material-symbols-outlined text-2xl">close</span>
               </button>
@@ -742,54 +851,211 @@ const AdminShiftsPage: React.FC = () => {
             <div className="space-y-4 sm:space-y-5">
               <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Nhân viên</p>
-                <p className="text-base font-semibold text-gray-900 dark:text-white">{selectedShiftForAddMoney.staffName}</p>
+                <p className="text-base font-semibold text-gray-900 dark:text-white">{selectedShiftForMoney.staffName}</p>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+              <div className="bg-primary/10 dark:bg-primary/20 rounded-lg p-4 border border-primary/20">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Tiền giao ca hiện tại</p>
-                <p className="text-base font-semibold text-gray-900 dark:text-white">
-                  {selectedShiftForAddMoney.tienGiaoCa.toLocaleString('vi-VN')}đ
+                <p className="text-lg font-bold text-primary dark:text-primary-light">
+                  {selectedShiftForMoney.tienGiaoCa.toLocaleString('vi-VN')}đ
                 </p>
               </div>
-              <div>
-                <label className="block text-sm sm:text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Số tiền cộng thêm (VNĐ) *
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={addMoneyAmount}
-                  onChange={(e) => setAddMoneyAmount(e.target.value)}
-                  placeholder="Nhập số tiền cộng thêm"
-                  className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary h-12 sm:h-14 p-3 sm:p-4 text-base sm:text-lg font-normal leading-normal touch-manipulation"
-                  disabled={isAddingMoney}
-                />
-              </div>
-              {addMoneyAmount && !isNaN(parseFloat(addMoneyAmount)) && parseFloat(addMoneyAmount) > 0 && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Tiền giao ca sau khi cộng</p>
-                  <p className="text-base font-semibold text-blue-600 dark:text-blue-400">
-                    {(selectedShiftForAddMoney.tienGiaoCa + parseFloat(addMoneyAmount)).toLocaleString('vi-VN')}đ
-                  </p>
-                </div>
-              )}
-              <div className="flex gap-3 pt-2 sm:pt-4 pb-2">
-                <button
-                  onClick={handleCloseAddMoneyModal}
-                  className="flex-1 h-12 sm:h-14 px-4 rounded-lg border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-base sm:text-lg hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700 transition-colors touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={isAddingMoney}
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleAddMoney}
-                  className="flex-1 h-12 sm:h-14 px-4 rounded-lg bg-green-600 text-white font-bold text-base sm:text-lg hover:bg-green-700 active:bg-green-800 transition-colors touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                  disabled={isAddingMoney || !addMoneyAmount}
-                >
-                  {isAddingMoney ? (
-                    <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  ) : (
-                    'Xác nhận'
+
+              {/* Form thêm tiền mới */}
+              <div className="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-3">
+                  Thêm tiền mới
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Số tiền (VNĐ) *
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={addMoneyAmount}
+                      onChange={(e) => setAddMoneyAmount(e.target.value)}
+                      placeholder="Nhập số tiền cộng thêm"
+                      min="1"
+                      step="1"
+                      className="w-full h-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 text-sm"
+                      disabled={isProcessingMoney}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Ghi chú
+                    </label>
+                    <input
+                      type="text"
+                      value={addMoneyNote}
+                      onChange={(e) => setAddMoneyNote(e.target.value)}
+                      placeholder="Nhập ghi chú (tùy chọn)"
+                      className="w-full h-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 text-sm"
+                      disabled={isProcessingMoney}
+                    />
+                  </div>
+                  {addMoneyAmount && !isNaN(parseFloat(addMoneyAmount)) && parseFloat(addMoneyAmount) > 0 && (
+                    <div className="bg-white dark:bg-gray-800 rounded p-2">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Tiền giao ca sau khi cộng</p>
+                      <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        {(selectedShiftForMoney.tienGiaoCa + parseFloat(addMoneyAmount)).toLocaleString('vi-VN')}đ
+                      </p>
+                    </div>
                   )}
+                  <button
+                    onClick={handleAddMoney}
+                    disabled={isProcessingMoney || !addMoneyAmount || isNaN(parseFloat(addMoneyAmount)) || parseFloat(addMoneyAmount) <= 0}
+                    className="w-full h-10 px-4 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {isProcessingMoney ? (
+                      <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      'Thêm tiền'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Lịch sử thêm tiền */}
+              <div>
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-3">
+                  Lịch sử đã thêm ({moneyAdditions.length} lần)
+                </h3>
+                {loadingAdditions ? (
+                  <div className="text-center py-4">
+                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Đang tải...</p>
+                  </div>
+                ) : moneyAdditions.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                    <p className="text-sm">Chưa có lần thêm tiền nào</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {moneyAdditions.map((addition) => (
+                      <div
+                        key={addition.id}
+                        className={`bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 sm:p-4 border ${
+                          editingAddition?.id === addition.id
+                            ? 'border-primary ring-2 ring-primary/20'
+                            : 'border-gray-200 dark:border-gray-700'
+                        }`}
+                      >
+                        {editingAddition?.id === addition.id ? (
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Số tiền (VNĐ) *
+                              </label>
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                value={editAmount}
+                                onChange={(e) => setEditAmount(e.target.value)}
+                                className="w-full h-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 text-sm"
+                                disabled={isProcessingMoney}
+                                min="1"
+                                step="1"
+                              />
+                              {editAmount && !isNaN(parseFloat(editAmount)) && parseFloat(editAmount) !== editingAddition.amount && (
+                                <p className="text-xs mt-1">
+                                  {parseFloat(editAmount) > editingAddition.amount ? (
+                                    <span className="text-green-600 dark:text-green-400">
+                                      Sẽ cộng thêm: +{(parseFloat(editAmount) - editingAddition.amount).toLocaleString('vi-VN')}đ
+                                    </span>
+                                  ) : (
+                                    <span className="text-orange-600 dark:text-orange-400">
+                                      Sẽ trừ đi: -{(editingAddition.amount - parseFloat(editAmount)).toLocaleString('vi-VN')}đ
+                                    </span>
+                                  )}
+                                </p>
+                              )}
+                            </div>
+                            <div>
+                              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Ghi chú
+                              </label>
+                              <input
+                                type="text"
+                                value={editNote}
+                                onChange={(e) => setEditNote(e.target.value)}
+                                placeholder="Nhập ghi chú (tùy chọn)"
+                                className="w-full h-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 text-sm"
+                                disabled={isProcessingMoney}
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleSaveEditAddition}
+                                disabled={isProcessingMoney || !editAmount || isNaN(parseFloat(editAmount)) || parseFloat(editAmount) <= 0}
+                                className="flex-1 h-9 px-3 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                              >
+                                {isProcessingMoney ? (
+                                  <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                ) : (
+                                  'Lưu'
+                                )}
+                              </button>
+                              <button
+                                onClick={handleCancelEditAddition}
+                                disabled={isProcessingMoney}
+                                className="flex-1 h-9 px-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                              >
+                                Hủy
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-start gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                                  +{addition.amount.toLocaleString('vi-VN')}đ
+                                </p>
+                              </div>
+                              {addition.note && (
+                                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                  {addition.note}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-500 dark:text-gray-500">
+                                {new Date(addition.createdAt).toLocaleString('vi-VN')}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleStartEditAddition(addition)}
+                                disabled={isProcessingMoney}
+                                className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50"
+                                title="Sửa"
+                              >
+                                <span className="material-symbols-outlined text-lg">edit</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAddition(addition)}
+                                disabled={isProcessingMoney}
+                                className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                                title="Xóa"
+                              >
+                                <span className="material-symbols-outlined text-lg">delete</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-2 sm:pt-4 pb-2 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={handleCloseMoneyModal}
+                  className="flex-1 h-12 sm:h-14 px-4 rounded-lg border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-base sm:text-lg hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700 transition-colors touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isProcessingMoney}
+                >
+                  Đóng
                 </button>
               </div>
             </div>

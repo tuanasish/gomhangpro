@@ -42,6 +42,7 @@ export async function getCustomersList(req: Request, res: Response<ApiResponse<C
         name: customer.name,
         phone: customer.phone || undefined,
         address: customer.address || undefined,
+        defaultTienCongGom: customer.default_tien_cong_gom ? Number(customer.default_tien_cong_gom) : undefined,
         createdAt: new Date(customer.created_at),
         updatedAt: new Date(customer.updated_at),
       })),
@@ -83,6 +84,7 @@ export async function getCustomerById(req: Request<{ id: string }>, res: Respons
         name: customer.name,
         phone: customer.phone || undefined,
         address: customer.address || undefined,
+        defaultTienCongGom: customer.default_tien_cong_gom ? Number(customer.default_tien_cong_gom) : undefined,
         createdAt: new Date(customer.created_at),
         updatedAt: new Date(customer.updated_at),
       },
@@ -100,11 +102,11 @@ export async function getCustomerById(req: Request<{ id: string }>, res: Respons
  * Tạo khách hàng mới
  */
 export async function createCustomer(
-  req: Request<{}, ApiResponse<Customer>, { name: string; phone?: string; address?: string }>,
+  req: Request<{}, ApiResponse<Customer>, { name: string; phone?: string; address?: string; defaultTienCongGom?: number }>,
   res: Response
 ): Promise<void> {
   try {
-    const { name, phone, address } = req.body;
+    const { name, phone, address, defaultTienCongGom } = req.body;
 
     // Validation cơ bản
     if (!name || !name.trim()) {
@@ -121,6 +123,7 @@ export async function createCustomer(
         name: name.trim(),
         phone: phone?.trim() || null,
         address: address?.trim() || null,
+        default_tien_cong_gom: defaultTienCongGom !== undefined ? defaultTienCongGom : null,
       })
       .select()
       .single();
@@ -141,6 +144,7 @@ export async function createCustomer(
         name: newCustomer.name,
         phone: newCustomer.phone || undefined,
         address: newCustomer.address || undefined,
+        defaultTienCongGom: newCustomer.default_tien_cong_gom ? Number(newCustomer.default_tien_cong_gom) : undefined,
         createdAt: new Date(newCustomer.created_at),
         updatedAt: new Date(newCustomer.updated_at),
       },
@@ -159,12 +163,12 @@ export async function createCustomer(
  * Cập nhật khách hàng
  */
 export async function updateCustomer(
-  req: Request<{ id: string }, ApiResponse<Customer>, { name?: string; phone?: string; address?: string }>,
+  req: Request<{ id: string }, ApiResponse<Customer>, { name?: string; phone?: string; address?: string; defaultTienCongGom?: number }>,
   res: Response
 ): Promise<void> {
   try {
     const { id } = req.params;
-    const { name, phone, address } = req.body;
+    const { name, phone, address, defaultTienCongGom } = req.body;
 
     const updateData: any = {};
     if (name !== undefined) {
@@ -179,6 +183,7 @@ export async function updateCustomer(
     }
     if (phone !== undefined) updateData.phone = phone?.trim() || null;
     if (address !== undefined) updateData.address = address?.trim() || null;
+    if (defaultTienCongGom !== undefined) updateData.default_tien_cong_gom = defaultTienCongGom !== null && defaultTienCongGom !== undefined ? defaultTienCongGom : null;
 
     const { data: updatedCustomer, error } = await supabase
       .from('customers')
@@ -202,6 +207,7 @@ export async function updateCustomer(
         name: updatedCustomer.name,
         phone: updatedCustomer.phone || undefined,
         address: updatedCustomer.address || undefined,
+        defaultTienCongGom: updatedCustomer.default_tien_cong_gom ? Number(updatedCustomer.default_tien_cong_gom) : undefined,
         createdAt: new Date(updatedCustomer.created_at),
         updatedAt: new Date(updatedCustomer.updated_at),
       },

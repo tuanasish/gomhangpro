@@ -21,19 +21,18 @@ const CreateOrderPage: () => React.JSX.Element = () => {
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [counterName, setCounterName] = useState<string>('');
   const [counterId, setCounterId] = useState<string>('');
-  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState<boolean>(false);
   const [showCreateCustomerModal, setShowCreateCustomerModal] = useState<boolean>(false);
   const [showCreateCounterModal, setShowCreateCounterModal] = useState<boolean>(false);
   
   // State cho suggestions
   const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
   const [counterSuggestions, setCounterSuggestions] = useState<Counter[]>([]);
-  const [searchingCustomers, setSearchingCustomers] = useState(false);
   
   // State cho form tạo mới
   const [newCustomerName, setNewCustomerName] = useState<string>('');
   const [newCustomerPhone, setNewCustomerPhone] = useState<string>('');
   const [newCounterName, setNewCounterName] = useState<string>('');
+  const [newCounterAddress, setNewCounterAddress] = useState<string>('');
   const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
   const [isCreatingCounter, setIsCreatingCounter] = useState(false);
 
@@ -69,7 +68,7 @@ const CreateOrderPage: () => React.JSX.Element = () => {
     loadShift();
   }, []);
 
-  // Load counters list
+  // Load counters list khi component mount và khi cần
   useEffect(() => {
     const loadCounters = async () => {
       try {
@@ -83,28 +82,31 @@ const CreateOrderPage: () => React.JSX.Element = () => {
     loadCounters();
   }, []);
 
-  // Search customers với debounce
+  // Reload counters sau khi tạo counter mới
+  const reloadCounters = async () => {
+    try {
+      const counters = await countersService.getCountersList(true);
+      setCounterSuggestions(counters);
+    } catch (err) {
+      console.error('Reload counters error:', err);
+    }
+  };
+
+  // Load customers khi có text (tự động load khi bắt đầu gõ)
   useEffect(() => {
-    if (!customerName || customerName.length < 2) {
-      setCustomerSuggestions([]);
+    if (customerName && customerName.length >= 1 && customerSuggestions.length === 0) {
+      // Load customers khi user bắt đầu gõ và chưa có suggestions - gọi không có tham số để lấy tất cả
+      customersService.getCustomersList().then(setCustomerSuggestions).catch(console.error);
+    }
+  }, [customerName]);
+
+  // Filter counter suggestions khi gõ
+  useEffect(() => {
+    if (!counterName || counterName.length < 1) {
       return;
     }
-
-    const timeoutId = setTimeout(async () => {
-      setSearchingCustomers(true);
-      try {
-        const customers = await customersService.searchCustomers(customerName);
-        setCustomerSuggestions(customers);
-      } catch (err) {
-        console.error('Search customers error:', err);
-        setCustomerSuggestions([]);
-      } finally {
-        setSearchingCustomers(false);
-      }
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [customerName]);
+    // Counter suggestions đã được load sẵn, chỉ cần filter
+  }, [counterName]);
 
   // Tính toán tự động
   const tongTienHoaDon = tienHang + tienCongGom + phiDongHang;
@@ -147,7 +149,12 @@ const CreateOrderPage: () => React.JSX.Element = () => {
     setCustomerId(customer.id);
     setCustomerName(customer.name);
     setCustomerPhone(customer.phone || '');
-    setShowCustomerSuggestions(false);
+    // Tự động điền tiền công gom mặc định nếu có, nhưng vẫn cho phép chỉnh sửa
+    if (customer.defaultTienCongGom !== undefined && customer.defaultTienCongGom !== null) {
+      setTienCongGom(customer.defaultTienCongGom);
+    }
+    setCustomerSuggestions([]);
+    setCustomerSuggestions([]);
   };
 
   const handleCounterSelect = (counter: Counter) => {
@@ -174,7 +181,7 @@ const CreateOrderPage: () => React.JSX.Element = () => {
       setNewCustomerName('');
       setNewCustomerPhone('');
       setShowCreateCustomerModal(false);
-      setShowCustomerSuggestions(false);
+      setCustomerSuggestions([]);
     } catch (err: any) {
       console.error('Create customer error:', err);
       setError(err.message || 'Lỗi tạo khách hàng. Vui lòng thử lại.');
@@ -194,11 +201,15 @@ const CreateOrderPage: () => React.JSX.Element = () => {
     try {
       const newCounter = await countersService.createCounter({
         name: newCounterName.trim(),
+        address: newCounterAddress.trim() || undefined,
       });
       setCounterId(newCounter.id);
       setCounterName(newCounter.name);
       setNewCounterName('');
+      setNewCounterAddress('');
       setShowCreateCounterModal(false);
+      // Reload counters để cập nhật suggestions
+      await reloadCounters();
     } catch (err: any) {
       console.error('Create counter error:', err);
       setError(err.message || 'Lỗi tạo quầy. Vui lòng thử lại.');
@@ -252,11 +263,16 @@ const CreateOrderPage: () => React.JSX.Element = () => {
                     onChange={(e) => {
                       const value = e.target.value;
                       setCustomerName(value);
-                      setShowCustomerSuggestions(value.length >= 2);
                       setCustomerId(''); // Reset ID khi người dùng gõ mới
                       setCustomerPhone(''); // Reset phone
+                      // Suggestions sẽ tự động hiện khi có >= 1 ký tự (trong useEffect)
                     }}
-                    onFocus={() => customerName.length > 0 && setShowCustomerSuggestions(true)}
+                    onFocus={() => {
+                      // Load customers khi focus nếu chưa có (giống counter) - gọi không có tham số để lấy tất cả
+                      if (customerSuggestions.length === 0) {
+                        customersService.getCustomersList().then(setCustomerSuggestions).catch(console.error);
+                      }
+                    }}
                     className="form-input flex flex-1 min-w-0 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-primary h-14 placeholder:text-gray-400 dark:placeholder:text-gray-500 p-4 text-base font-normal leading-normal"
                     placeholder="Nhập tên khách hàng"
                   />
@@ -269,49 +285,38 @@ const CreateOrderPage: () => React.JSX.Element = () => {
                   </button>
                 </div>
               </label>
-              {showCustomerSuggestions && customerName && customerName.length >= 2 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                  {searchingCustomers ? (
-                    <div className="px-4 py-3 text-center text-gray-500 dark:text-gray-400">
-                      Đang tìm kiếm...
-                    </div>
-                  ) : customerSuggestions.length > 0 ? (
-                    <>
-                      {customerSuggestions.map((customer) => (
-                        <button
-                          key={customer.id}
-                          onClick={() => handleCustomerSelect(customer)}
-                          className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white"
-                        >
-                          <div className="font-medium">{customer.name}</div>
-                          {customer.phone && (
-                            <div className="text-sm text-gray-500">{customer.phone}</div>
-                          )}
-                        </button>
-                      ))}
+              {customerName && customerName.length >= 1 && !customerId && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+                  {customerSuggestions.length > 0 && customerSuggestions
+                    .filter(c => c.name.toLowerCase().includes(customerName.toLowerCase()))
+                    .slice(0, 10)
+                    .map((customer) => (
                       <button
-                        onClick={() => {
-                          setNewCustomerName(customerName);
-                          setShowCreateCustomerModal(true);
-                          setShowCustomerSuggestions(false);
-                        }}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-primary font-medium border-t border-gray-200 dark:border-gray-700"
+                        key={customer.id}
+                        onClick={() => handleCustomerSelect(customer)}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                       >
-                        + Tạo mới: "{customerName}"
+                        <div className="font-medium">{customer.name}</div>
+                        {customer.phone && (
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{customer.phone}</div>
+                        )}
                       </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setNewCustomerName(customerName);
-                        setShowCreateCustomerModal(true);
-                        setShowCustomerSuggestions(false);
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-primary font-medium"
-                    >
-                      + Tạo mới: "{customerName}"
-                    </button>
+                    ))}
+                  {customerSuggestions.length > 0 && customerSuggestions.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).length === 0 && (
+                    <div className="px-4 py-3 text-center text-gray-500 dark:text-gray-400 text-sm">
+                      Không tìm thấy khách hàng nào
+                    </div>
                   )}
+                  <button
+                    onClick={() => {
+                      setNewCustomerName(customerName);
+                      setShowCreateCustomerModal(true);
+                      setCustomerSuggestions([]);
+                    }}
+                    className={`w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-primary font-medium ${customerSuggestions.length > 0 ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}
+                  >
+                    + Tạo mới: "{customerName}"
+                  </button>
                 </div>
               )}
             </div>
@@ -341,6 +346,12 @@ const CreateOrderPage: () => React.JSX.Element = () => {
                         countersService.getCountersList(true).then(setCounterSuggestions).catch(console.error);
                       }
                     }}
+                    onBlur={() => {
+                      // Delay để cho phép click vào suggestion
+                      setTimeout(() => {
+                        // Không cần set state vì suggestions hiển thị dựa trên điều kiện
+                      }, 200);
+                    }}
                     className="form-input flex flex-1 min-w-0 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-primary h-14 placeholder:text-gray-400 dark:placeholder:text-gray-500 p-4 text-base font-normal leading-normal"
                     placeholder="Nhập tên quầy hoặc chọn từ danh sách"
                   />
@@ -353,20 +364,28 @@ const CreateOrderPage: () => React.JSX.Element = () => {
                   </button>
                 </div>
               </label>
-              {counterSuggestions.length > 0 && counterName && !counterId && (
-                <div className="mt-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+              {counterSuggestions.length > 0 && counterName && counterName.length >= 1 && !counterId && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
                   {counterSuggestions
                     .filter(c => c.name.toLowerCase().includes(counterName.toLowerCase()))
-                    .slice(0, 5)
+                    .slice(0, 10)
                     .map((counter) => (
                       <button
                         key={counter.id}
                         onClick={() => handleCounterSelect(counter)}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white"
+                        className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                       >
-                        {counter.name}
+                        <div className="font-medium">{counter.name}</div>
+                        {counter.address && (
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{counter.address}</div>
+                        )}
                       </button>
                     ))}
+                  {counterSuggestions.filter(c => c.name.toLowerCase().includes(counterName.toLowerCase())).length === 0 && (
+                    <div className="px-4 py-3 text-center text-gray-500 dark:text-gray-400 text-sm">
+                      Không tìm thấy quầy nào
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -545,6 +564,7 @@ const CreateOrderPage: () => React.JSX.Element = () => {
                 onClick={() => {
                   setShowCreateCounterModal(false);
                   setNewCounterName('');
+                  setNewCounterAddress('');
                 }}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
@@ -564,12 +584,29 @@ const CreateOrderPage: () => React.JSX.Element = () => {
                   autoFocus
                 />
               </label>
+              <label className="flex flex-col">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Địa chỉ
+                </p>
+                <input
+                  value={newCounterAddress}
+                  onChange={(e) => setNewCounterAddress(e.target.value)}
+                  className="form-input w-full h-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-4"
+                  placeholder="Nhập địa chỉ quầy (tùy chọn)"
+                />
+              </label>
             </div>
+            {error && (
+              <div className="mt-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3">
+                <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+              </div>
+            )}
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => {
                   setShowCreateCounterModal(false);
                   setNewCounterName('');
+                  setNewCounterAddress('');
                 }}
                 className="flex-1 h-12 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
