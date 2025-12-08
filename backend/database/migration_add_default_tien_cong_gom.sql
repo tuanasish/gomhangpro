@@ -8,3 +8,5 @@ ADD COLUMN IF NOT EXISTS default_tien_cong_gom numeric DEFAULT NULL;
 -- Comment cho cột
 COMMENT ON COLUMN public.customers.default_tien_cong_gom IS 'Tiền công gom mặc định cho khách hàng này (có thể NULL nếu chưa thiết lập)';
 
+
+

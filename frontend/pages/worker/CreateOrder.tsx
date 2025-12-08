@@ -36,11 +36,22 @@ const CreateOrderPage: () => React.JSX.Element = () => {
   const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
   const [isCreatingCounter, setIsCreatingCounter] = useState(false);
 
-  // State cho các loại tiền
-  const [tienHang, setTienHang] = useState<number>(0);
-  const [tienCongGom, setTienCongGom] = useState<number>(0);
-  const [phiDongHang, setPhiDongHang] = useState<number>(0);
-  const [tienHoaHong, setTienHoaHong] = useState<number>(0);
+  // Utils định dạng tiền
+  const formatMoneyInput = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '');
+    if (!digitsOnly) return '';
+    return digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+  const parseMoneyValue = (value: string) => {
+    const normalized = value.replace(/\./g, '');
+    return normalized ? Number(normalized) : NaN;
+  };
+
+  // State cho các loại tiền (dạng chuỗi để hiển thị phân cách nghìn)
+  const [tienHangInput, setTienHangInput] = useState<string>('');
+  const [tienCongGomInput, setTienCongGomInput] = useState<string>('');
+  const [phiDongHangInput, setPhiDongHangInput] = useState<string>('');
+  const [tienHoaHongInput, setTienHoaHongInput] = useState<string>('');
   
   // State cho save
   const [isSaving, setIsSaving] = useState(false);
@@ -108,8 +119,17 @@ const CreateOrderPage: () => React.JSX.Element = () => {
     // Counter suggestions đã được load sẵn, chỉ cần filter
   }, [counterName]);
 
+  // Giá trị số từ input
+  const tienHang = parseMoneyValue(tienHangInput);
+  const tienCongGom = parseMoneyValue(tienCongGomInput);
+  const phiDongHang = parseMoneyValue(phiDongHangInput);
+  const tienHoaHong = parseMoneyValue(tienHoaHongInput);
+
   // Tính toán tự động
-  const tongTienHoaDon = tienHang + tienCongGom + phiDongHang;
+  const tongTienHoaDon =
+    (isNaN(tienHang) ? 0 : tienHang) +
+    (isNaN(tienCongGom) ? 0 : tienCongGom) +
+    (isNaN(phiDongHang) ? 0 : phiDongHang);
 
   const handleSave = async () => {
     if (!shiftId) {
@@ -117,7 +137,7 @@ const CreateOrderPage: () => React.JSX.Element = () => {
       return;
     }
 
-    if (!customerName || !counterName || tienHang <= 0) {
+    if (!customerName || !counterName || isNaN(tienHang) || tienHang <= 0) {
       setError('Vui lòng điền đầy đủ thông tin');
       return;
     }
@@ -133,9 +153,9 @@ const CreateOrderPage: () => React.JSX.Element = () => {
         counterId: counterId || undefined,
         counterName: counterId ? undefined : counterName.trim(),
         tienHang,
-        tienCongGom,
-        phiDongHang,
-        tienHoaHong: tienHoaHong || undefined,
+        tienCongGom: isNaN(tienCongGom) ? 0 : tienCongGom,
+        phiDongHang: isNaN(phiDongHang) ? 0 : phiDongHang,
+        tienHoaHong: isNaN(tienHoaHong) ? undefined : tienHoaHong,
       });
       navigate(RoutePath.WORKER_HOME);
     } catch (err: any) {
@@ -151,7 +171,7 @@ const CreateOrderPage: () => React.JSX.Element = () => {
     setCustomerPhone(customer.phone || '');
     // Tự động điền tiền công gom mặc định nếu có, nhưng vẫn cho phép chỉnh sửa
     if (customer.defaultTienCongGom !== undefined && customer.defaultTienCongGom !== null) {
-      setTienCongGom(customer.defaultTienCongGom);
+      setTienCongGomInput(formatMoneyInput(customer.defaultTienCongGom.toString()));
     }
     setCustomerSuggestions([]);
     setCustomerSuggestions([]);
@@ -402,9 +422,10 @@ const CreateOrderPage: () => React.JSX.Element = () => {
                   Tiền hàng (trả cho quầy) <span className="text-red-500">*</span>
                 </p>
                 <input
-                  type="number"
-                  value={tienHang || ''}
-                  onChange={(e) => setTienHang(Number(e.target.value) || 0)}
+                  type="text"
+                  inputMode="numeric"
+                  value={tienHangInput}
+                  onChange={(e) => setTienHangInput(formatMoneyInput(e.target.value))}
                   className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-primary h-14 placeholder:text-gray-400 dark:placeholder:text-gray-500 p-4 text-base font-normal leading-normal"
                   placeholder="0"
                   required
@@ -416,9 +437,10 @@ const CreateOrderPage: () => React.JSX.Element = () => {
                   Tiền công gom <span className="text-red-500">*</span>
                 </p>
                 <input
-                  type="number"
-                  value={tienCongGom || ''}
-                  onChange={(e) => setTienCongGom(Number(e.target.value) || 0)}
+                  type="text"
+                  inputMode="numeric"
+                  value={tienCongGomInput}
+                  onChange={(e) => setTienCongGomInput(formatMoneyInput(e.target.value))}
                   className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-primary h-14 placeholder:text-gray-400 dark:placeholder:text-gray-500 p-4 text-base font-normal leading-normal"
                   placeholder="0"
                   required
@@ -430,9 +452,10 @@ const CreateOrderPage: () => React.JSX.Element = () => {
                   Phí đóng hàng <span className="text-red-500">*</span>
                 </p>
                 <input
-                  type="number"
-                  value={phiDongHang || ''}
-                  onChange={(e) => setPhiDongHang(Number(e.target.value) || 0)}
+                  type="text"
+                  inputMode="numeric"
+                  value={phiDongHangInput}
+                  onChange={(e) => setPhiDongHangInput(formatMoneyInput(e.target.value))}
                   className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-primary h-14 placeholder:text-gray-400 dark:placeholder:text-gray-500 p-4 text-base font-normal leading-normal"
                   placeholder="0"
                   required
@@ -444,9 +467,10 @@ const CreateOrderPage: () => React.JSX.Element = () => {
                   Tiền hoa hồng (nếu có)
                 </p>
                 <input
-                  type="number"
-                  value={tienHoaHong || ''}
-                  onChange={(e) => setTienHoaHong(Number(e.target.value) || 0)}
+                  type="text"
+                  inputMode="numeric"
+                  value={tienHoaHongInput}
+                  onChange={(e) => setTienHoaHongInput(formatMoneyInput(e.target.value))}
                   className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-primary h-14 placeholder:text-gray-400 dark:placeholder:text-gray-500 p-4 text-base font-normal leading-normal"
                   placeholder="0"
                 />
@@ -459,7 +483,7 @@ const CreateOrderPage: () => React.JSX.Element = () => {
             <div className="flex justify-between items-center text-lg">
               <span className="font-medium text-gray-600 dark:text-gray-300">Tổng tiền hóa đơn (khách phải trả):</span>
               <span className="font-bold text-gray-900 dark:text-white text-xl">
-                {tongTienHoaDon.toLocaleString('vi-VN')}đ
+                {(isNaN(tongTienHoaDon) ? 0 : tongTienHoaDon).toLocaleString('vi-VN')}đ
               </span>
             </div>
           </div>
@@ -467,7 +491,7 @@ const CreateOrderPage: () => React.JSX.Element = () => {
           <div className="flex pt-4 pb-4">
             <button
               onClick={handleSave}
-              disabled={!shiftId || !customerName || !counterName || tienHang <= 0 || isSaving}
+              disabled={!shiftId || !customerName || !counterName || isNaN(tienHang) || tienHang <= 0 || isSaving}
               className="w-full flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-14 bg-primary text-white gap-2 text-base font-bold leading-normal tracking-wide px-6 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? (

@@ -39,6 +39,17 @@ const AdminShiftsPage: React.FC = () => {
   const [filterStaffId, setFilterStaffId] = useState('');
   const [filterStatus, setFilterStatus] = useState<'active' | 'ended' | ''>('');
 
+  const formatMoneyInput = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '');
+    if (!digitsOnly) return '';
+    return digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
+  const parseMoneyValue = (value: string) => {
+    const normalized = value.replace(/\./g, '');
+    return normalized ? parseFloat(normalized) : NaN;
+  };
+
   // Form state cho tạo ca mới
   const [formData, setFormData] = useState({
     staffId: '',
@@ -127,7 +138,7 @@ const AdminShiftsPage: React.FC = () => {
       return;
     }
 
-    const tienGiaoCa = parseFloat(formData.tienGiaoCa);
+    const tienGiaoCa = parseMoneyValue(formData.tienGiaoCa);
     if (isNaN(tienGiaoCa) || tienGiaoCa <= 0) {
       showWarning('Vui lòng nhập số tiền hợp lệ');
       return;
@@ -220,7 +231,7 @@ const AdminShiftsPage: React.FC = () => {
       return;
     }
 
-    const amount = parseFloat(addMoneyAmount);
+    const amount = parseMoneyValue(addMoneyAmount);
     if (isNaN(amount) || amount <= 0) {
       showWarning('Số tiền phải lớn hơn 0');
       return;
@@ -248,7 +259,7 @@ const AdminShiftsPage: React.FC = () => {
 
   const handleStartEditAddition = (addition: ShiftMoneyAddition) => {
     setEditingAddition(addition);
-    setEditAmount(addition.amount.toString());
+    setEditAmount(formatMoneyInput(addition.amount.toString()));
     setEditNote(addition.note || '');
   };
 
@@ -264,7 +275,7 @@ const AdminShiftsPage: React.FC = () => {
       return;
     }
 
-    const amount = parseFloat(editAmount);
+    const amount = parseMoneyValue(editAmount);
     if (isNaN(amount) || amount <= 0) {
       showWarning('Số tiền phải lớn hơn 0');
       return;
@@ -351,6 +362,9 @@ const AdminShiftsPage: React.FC = () => {
     const d = typeof date === 'string' ? new Date(date) : date;
     return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   };
+
+  const addAmountNumber = parseMoneyValue(addMoneyAmount);
+  const editAmountNumber = parseMoneyValue(editAmount);
 
   return (
     <div className="relative flex min-h-screen w-full bg-background-light dark:bg-background-dark">
@@ -788,10 +802,10 @@ const AdminShiftsPage: React.FC = () => {
                   Tiền giao ca (VNĐ) *
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
                   value={formData.tienGiaoCa}
-                  onChange={(e) => setFormData({ ...formData, tienGiaoCa: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, tienGiaoCa: formatMoneyInput(e.target.value) })}
                   placeholder="Nhập số tiền giao ca"
                   className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary h-12 sm:h-14 p-3 sm:p-4 text-base sm:text-lg font-normal leading-normal touch-manipulation"
                   disabled={isSubmitting}
@@ -871,10 +885,10 @@ const AdminShiftsPage: React.FC = () => {
                       Số tiền (VNĐ) *
                     </label>
                     <input
-                      type="number"
+                      type="text"
                       inputMode="numeric"
                       value={addMoneyAmount}
-                      onChange={(e) => setAddMoneyAmount(e.target.value)}
+                      onChange={(e) => setAddMoneyAmount(formatMoneyInput(e.target.value))}
                       placeholder="Nhập số tiền cộng thêm"
                       min="1"
                       step="1"
@@ -895,17 +909,17 @@ const AdminShiftsPage: React.FC = () => {
                       disabled={isProcessingMoney}
                     />
                   </div>
-                  {addMoneyAmount && !isNaN(parseFloat(addMoneyAmount)) && parseFloat(addMoneyAmount) > 0 && (
+                  {addMoneyAmount && !isNaN(addAmountNumber) && addAmountNumber > 0 && (
                     <div className="bg-white dark:bg-gray-800 rounded p-2">
                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Tiền giao ca sau khi cộng</p>
                       <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                        {(selectedShiftForMoney.tienGiaoCa + parseFloat(addMoneyAmount)).toLocaleString('vi-VN')}đ
+                        {(selectedShiftForMoney.tienGiaoCa + addAmountNumber).toLocaleString('vi-VN')}đ
                       </p>
                     </div>
                   )}
                   <button
                     onClick={handleAddMoney}
-                    disabled={isProcessingMoney || !addMoneyAmount || isNaN(parseFloat(addMoneyAmount)) || parseFloat(addMoneyAmount) <= 0}
+                    disabled={isProcessingMoney || !addMoneyAmount || isNaN(addAmountNumber) || addAmountNumber <= 0}
                     className="w-full h-10 px-4 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
                     {isProcessingMoney ? (
@@ -949,24 +963,24 @@ const AdminShiftsPage: React.FC = () => {
                                 Số tiền (VNĐ) *
                               </label>
                               <input
-                                type="number"
+                                type="text"
                                 inputMode="numeric"
                                 value={editAmount}
-                                onChange={(e) => setEditAmount(e.target.value)}
+                                onChange={(e) => setEditAmount(formatMoneyInput(e.target.value))}
                                 className="w-full h-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 text-sm"
                                 disabled={isProcessingMoney}
                                 min="1"
                                 step="1"
                               />
-                              {editAmount && !isNaN(parseFloat(editAmount)) && parseFloat(editAmount) !== editingAddition.amount && (
+                              {editAmount && !isNaN(editAmountNumber) && editAmountNumber !== editingAddition.amount && (
                                 <p className="text-xs mt-1">
-                                  {parseFloat(editAmount) > editingAddition.amount ? (
+                                  {editAmountNumber > editingAddition.amount ? (
                                     <span className="text-green-600 dark:text-green-400">
-                                      Sẽ cộng thêm: +{(parseFloat(editAmount) - editingAddition.amount).toLocaleString('vi-VN')}đ
+                                      Sẽ cộng thêm: +{(editAmountNumber - editingAddition.amount).toLocaleString('vi-VN')}đ
                                     </span>
                                   ) : (
                                     <span className="text-orange-600 dark:text-orange-400">
-                                      Sẽ trừ đi: -{(editingAddition.amount - parseFloat(editAmount)).toLocaleString('vi-VN')}đ
+                                      Sẽ trừ đi: -{(editingAddition.amount - editAmountNumber).toLocaleString('vi-VN')}đ
                                     </span>
                                   )}
                                 </p>
@@ -988,7 +1002,7 @@ const AdminShiftsPage: React.FC = () => {
                             <div className="flex gap-2">
                               <button
                                 onClick={handleSaveEditAddition}
-                                disabled={isProcessingMoney || !editAmount || isNaN(parseFloat(editAmount)) || parseFloat(editAmount) <= 0}
+                                disabled={isProcessingMoney || !editAmount || isNaN(editAmountNumber) || editAmountNumber <= 0}
                                 className="flex-1 h-9 px-3 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                               >
                                 {isProcessingMoney ? (
