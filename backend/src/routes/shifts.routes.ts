@@ -31,13 +31,6 @@ router.get('/', authenticate, authorize('manager', 'admin'), getShiftsList);
 router.get('/current', authenticate, authorize('worker'), getCurrentShift);
 
 /**
- * @route   GET /api/shifts/:id
- * @desc    Lấy chi tiết ca làm việc
- * @access  Private (Worker/Manager/Admin)
- */
-router.get('/:id', authenticate, authorize('worker', 'manager', 'admin'), getShiftById);
-
-/**
  * @route   POST /api/shifts
  * @desc    Tạo ca mới
  * @access  Private (Manager/Admin)
@@ -45,18 +38,27 @@ router.get('/:id', authenticate, authorize('worker', 'manager', 'admin'), getShi
 router.post('/', authenticate, authorize('manager', 'admin'), createShift);
 
 /**
- * @route   PUT /api/shifts/:id/start
- * @desc    Bắt đầu ca
- * @access  Private (Worker)
+ * @route   GET /api/shifts/:id/money-additions
+ * @desc    Lấy lịch sử thêm tiền của ca
+ * @access  Private (Manager/Admin)
+ * NOTE: Phải đặt trước route GET /:id để tránh conflict
  */
-router.put('/:id/start', authenticate, authorize('worker'), startShift);
+router.get('/:id/money-additions', authenticate, authorize('manager', 'admin'), getShiftMoneyAdditions);
 
 /**
- * @route   PUT /api/shifts/:id/end
- * @desc    Kết thúc ca (chỉ admin)
- * @access  Private (Admin)
+ * @route   PUT /api/shifts/:id/money-additions/:additionId
+ * @desc    Cập nhật một lần thêm tiền trong lịch sử
+ * @access  Private (Manager/Admin)
+ * NOTE: Phải đặt trước route PUT /:id/start, /:id/end, etc để tránh conflict
  */
-router.put('/:id/end', authenticate, authorize('admin'), endShift);
+router.put('/:id/money-additions/:additionId', authenticate, authorize('manager', 'admin'), updateShiftMoneyAddition);
+
+/**
+ * @route   DELETE /api/shifts/:id/money-additions/:additionId
+ * @desc    Xóa một lần thêm tiền trong lịch sử
+ * @access  Private (Manager/Admin)
+ */
+router.delete('/:id/money-additions/:additionId', authenticate, authorize('manager', 'admin'), deleteShiftMoneyAddition);
 
 /**
  * @route   PUT /api/shifts/:id/add-money
@@ -73,24 +75,25 @@ router.put('/:id/add-money', authenticate, authorize('manager', 'admin'), addMon
 router.put('/:id/money', authenticate, authorize('manager', 'admin'), updateShiftMoney);
 
 /**
- * @route   GET /api/shifts/:id/money-additions
- * @desc    Lấy lịch sử thêm tiền của ca
- * @access  Private (Manager/Admin)
+ * @route   PUT /api/shifts/:id/start
+ * @desc    Bắt đầu ca
+ * @access  Private (Worker)
  */
-router.get('/:id/money-additions', authenticate, authorize('manager', 'admin'), getShiftMoneyAdditions);
+router.put('/:id/start', authenticate, authorize('worker'), startShift);
 
 /**
- * @route   PUT /api/shifts/:id/money-additions/:additionId
- * @desc    Cập nhật một lần thêm tiền trong lịch sử
- * @access  Private (Manager/Admin)
+ * @route   PUT /api/shifts/:id/end
+ * @desc    Kết thúc ca (chỉ admin)
+ * @access  Private (Admin)
  */
-router.put('/:id/money-additions/:additionId', authenticate, authorize('manager', 'admin'), updateShiftMoneyAddition);
+router.put('/:id/end', authenticate, authorize('admin'), endShift);
 
 /**
- * @route   DELETE /api/shifts/:id/money-additions/:additionId
- * @desc    Xóa một lần thêm tiền trong lịch sử
- * @access  Private (Manager/Admin)
+ * @route   GET /api/shifts/:id
+ * @desc    Lấy chi tiết ca làm việc
+ * @access  Private (Worker/Manager/Admin)
+ * NOTE: Phải đặt cuối cùng vì là route generic
  */
-router.delete('/:id/money-additions/:additionId', authenticate, authorize('manager', 'admin'), deleteShiftMoneyAddition);
+router.get('/:id', authenticate, authorize('worker', 'manager', 'admin'), getShiftById);
 
 export default router;
