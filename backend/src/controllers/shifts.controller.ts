@@ -595,7 +595,7 @@ async function recalculateShiftMoney(shiftId: string): Promise<void> {
     throw new Error('Lỗi lấy lịch sử thêm tiền');
   }
 
-  const tongTienDaThem = additions?.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) || 0;
+  const tongTienDaThem = additions?.reduce((sum: number, item: { amount: string | number }) => sum + parseFloat(item.amount.toString()), 0) || 0;
 
   // Lấy ca hiện tại
   const { data: shift, error: shiftError } = await supabase
