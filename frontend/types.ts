@@ -15,7 +15,7 @@ export interface Order {
   tienHoaHong: number; // Tiền hoa hồng - tiền TIP mà quầy chiết khấu cho công ty (khách hàng không thấy)
   
   // Tính toán
-  tongTienHoaDon: number; // Tổng tiền hóa đơn (khách phải trả) = tienHang + tienCongGom + phiDongHang
+  tongTienHoaDon: number; // Tổng tiền hóa đơn (khách phải trả) = tienHang + tienCongGom + phiDongHang + tienHoaHong
   
   staffId: string; // ID nhân viên
   staffName: string; // Tên nhân viên
@@ -86,5 +86,6 @@ export enum RoutePath {
   ADMIN_SHIFTS = '/admin/shifts',
   ADMIN_STAFF = '/admin/staff',
   ADMIN_CUSTOMERS = '/admin/customers',
+  CUSTOMER_DETAIL = '/admin/customers/:id',
   ADMIN_COUNTERS = '/admin/counters',
 }

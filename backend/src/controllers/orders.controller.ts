@@ -338,8 +338,8 @@ export async function createOrder(
       finalCounterId = newCounter.id;
     }
 
-    // Tính tổng tiền hóa đơn
-    const tongTienHoaDon = tienHang + tienCongGom + phiDongHang;
+    // Tính tổng tiền hóa đơn - bao gồm cả tiền hoa hồng (khách hàng phải trả tổng này)
+    const tongTienHoaDon = tienHang + tienCongGom + phiDongHang + (tienHoaHong || 0);
 
     // Kiểm tra quỹ còn lại có đủ không
     const quyConLaiHienTai = parseFloat(shift.quy_con_lai || 0);

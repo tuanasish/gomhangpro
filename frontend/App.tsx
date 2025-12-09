@@ -25,6 +25,7 @@ const AdminShiftsPage = lazy(() => import('./pages/manager/AdminShifts'));
 const AdminStaffPage = lazy(() => import('./pages/manager/AdminStaff'));
 const AdminCustomersPage = lazy(() => import('./pages/manager/AdminCustomers'));
 const AdminCountersPage = lazy(() => import('./pages/manager/AdminCounters'));
+const CustomerDetailPage = lazy(() => import('./pages/manager/CustomerDetail'));
 
 const App: React.FC = () => {
   return (
@@ -175,6 +176,16 @@ const App: React.FC = () => {
               <ProtectedRoute requiredRole="manager">
                 <Suspense fallback={<PageLoader />}>
                   <AdminCustomersPage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={RoutePath.CUSTOMER_DETAIL}
+            element={
+              <ProtectedRoute requiredRole="manager">
+                <Suspense fallback={<PageLoader />}>
+                  <CustomerDetailPage />
                 </Suspense>
               </ProtectedRoute>
             }

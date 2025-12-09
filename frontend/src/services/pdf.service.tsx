@@ -154,7 +154,7 @@ export async function generateInvoicePDF(data: InvoiceData): Promise<void> {
         <View style={styles.invoiceInfo}>
           <Text>
             <Text style={{ fontWeight: 'bold' }}>{removeVietnameseDiacritics('Ngay: ')}</Text>
-            {formatDate(data.date)} {formatTime(data.time)}
+            {formatDate(data.date)}
           </Text>
         </View>
 
@@ -183,78 +183,114 @@ export async function generateInvoicePDF(data: InvoiceData): Promise<void> {
 
         {/* Items Table */}
         <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableCell, styles.colStt]}>STT</Text>
-            <Text style={[styles.tableCell, styles.colDescription]}>{removeVietnameseDiacritics('Mo ta')}</Text>
-            <Text style={[styles.tableCell, styles.colQuantity]}>{removeVietnameseDiacritics('So luong')}</Text>
-            <Text style={[styles.tableCell, styles.colPrice]}>{removeVietnameseDiacritics('Don gia')}</Text>
-            <Text style={[styles.tableCell, styles.colTotal]}>{removeVietnameseDiacritics('Thanh tien')}</Text>
-          </View>
-
-          {data.items && data.items.length > 0 ? (
-            data.items.map((item, index) => {
-              const quantity = item.quantity || 1;
-              const price = item.price || 0;
-              return (
-                <View key={index} style={styles.tableRow}>
-                  <Text style={[styles.tableCell, styles.colStt]}>{index + 1}</Text>
-                  <Text style={[styles.tableCell, styles.colDescription]}>{removeVietnameseDiacritics(item.description || '')}</Text>
-                  <Text style={[styles.tableCell, styles.colQuantity]}>{quantity}</Text>
-                  <Text style={[styles.tableCell, styles.colPrice]}>{formatCurrency(price)}</Text>
-                  <Text style={[styles.tableCell, styles.colTotal]}>{formatCurrency(quantity * price)}</Text>
+          {data.simpleMode ? (
+            // Chế độ đơn giản: STT, Quầy, Tổng tiền
+            <>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableCell, { width: '10%', textAlign: 'center' }]}>STT</Text>
+                <Text style={[styles.tableCell, { width: '40%' }]}>{removeVietnameseDiacritics('Quay')}</Text>
+                <Text style={[styles.tableCell, { width: '50%', textAlign: 'right' }]}>{removeVietnameseDiacritics('Tong tien')}</Text>
+              </View>
+              {data.items && data.items.length > 0 ? (
+                data.items.map((item, index) => {
+                  const price = item.price || 0;
+                  const counterName = item.counterName || item.description || 'N/A';
+                  return (
+                    <View key={index} style={styles.tableRow}>
+                      <Text style={[styles.tableCell, { width: '10%', textAlign: 'center' }]}>{index + 1}</Text>
+                      <Text style={[styles.tableCell, { width: '40%' }]}>{removeVietnameseDiacritics(counterName)}</Text>
+                      <Text style={[styles.tableCell, { width: '50%', textAlign: 'right' }]}>{formatCurrency(price)}</Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <View style={styles.tableRow}>
+                  <Text style={[styles.tableCell, { width: '10%', textAlign: 'center' }]}>1</Text>
+                  <Text style={[styles.tableCell, { width: '40%' }]}>{removeVietnameseDiacritics(data.counterName || 'N/A')}</Text>
+                  <Text style={[styles.tableCell, { width: '50%', textAlign: 'right' }]}>{formatCurrency(data.tongTienHoaDon)}</Text>
                 </View>
-              );
-            })
+              )}
+            </>
           ) : (
-            <View style={styles.tableRow}>
-              <Text style={[styles.tableCell, styles.colStt]}>1</Text>
-              <Text style={[styles.tableCell, styles.colDescription]}>{removeVietnameseDiacritics('Dich vu gom hang')}</Text>
-              <Text style={[styles.tableCell, styles.colQuantity]}>1</Text>
-              <Text style={[styles.tableCell, styles.colPrice]}>{formatCurrency(data.tongTienHoaDon)}</Text>
-              <Text style={[styles.tableCell, styles.colTotal]}>{formatCurrency(data.tongTienHoaDon)}</Text>
-            </View>
+            // Chế độ đầy đủ: có chi tiết
+            <>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableCell, styles.colStt]}>STT</Text>
+                <Text style={[styles.tableCell, styles.colDescription]}>{removeVietnameseDiacritics('Mo ta')}</Text>
+                <Text style={[styles.tableCell, styles.colQuantity]}>{removeVietnameseDiacritics('So luong')}</Text>
+                <Text style={[styles.tableCell, styles.colPrice]}>{removeVietnameseDiacritics('Don gia')}</Text>
+                <Text style={[styles.tableCell, styles.colTotal]}>{removeVietnameseDiacritics('Thanh tien')}</Text>
+              </View>
+
+              {data.items && data.items.length > 0 ? (
+                data.items.map((item, index) => {
+                  const quantity = item.quantity || 1;
+                  const price = item.price || 0;
+                  return (
+                    <View key={index} style={styles.tableRow}>
+                      <Text style={[styles.tableCell, styles.colStt]}>{index + 1}</Text>
+                      <Text style={[styles.tableCell, styles.colDescription]}>{removeVietnameseDiacritics(item.description || '')}</Text>
+                      <Text style={[styles.tableCell, styles.colQuantity]}>{quantity}</Text>
+                      <Text style={[styles.tableCell, styles.colPrice]}>{formatCurrency(price)}</Text>
+                      <Text style={[styles.tableCell, styles.colTotal]}>{formatCurrency(quantity * price)}</Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <View style={styles.tableRow}>
+                  <Text style={[styles.tableCell, styles.colStt]}>1</Text>
+                  <Text style={[styles.tableCell, styles.colDescription]}>{removeVietnameseDiacritics('Dich vu gom hang')}</Text>
+                  <Text style={[styles.tableCell, styles.colQuantity]}>1</Text>
+                  <Text style={[styles.tableCell, styles.colPrice]}>{formatCurrency(data.tongTienHoaDon)}</Text>
+                  <Text style={[styles.tableCell, styles.colTotal]}>{formatCurrency(data.tongTienHoaDon)}</Text>
+                </View>
+              )}
+            </>
           )}
         </View>
 
         {/* Payment Summary */}
-        <View style={styles.summary}>
-          <Text style={styles.sectionTitle}>{removeVietnameseDiacritics('Chi tiet thanh toan:')}</Text>
-          
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>{removeVietnameseDiacritics('Tien hang:')}</Text>
-            <Text>{formatCurrency(data.tienHang)}</Text>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>{removeVietnameseDiacritics('Tien cong gom:')}</Text>
-            <Text>{formatCurrency(data.tienCongGom)}</Text>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>{removeVietnameseDiacritics('Phi dong hang:')}</Text>
-            <Text>{formatCurrency(data.phiDongHang)}</Text>
-          </View>
-
-          {data.tienHoaHong > 0 && (
+        {!data.simpleMode && (
+          <View style={styles.summary}>
+            <Text style={styles.sectionTitle}>{removeVietnameseDiacritics('Chi tiet thanh toan:')}</Text>
+            
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>{removeVietnameseDiacritics('Tien hoa hong:')}</Text>
-              <Text>{formatCurrency(data.tienHoaHong)}</Text>
+              <Text style={styles.summaryLabel}>{removeVietnameseDiacritics('Tien hang:')}</Text>
+              <Text>{formatCurrency(data.tienHang)}</Text>
             </View>
-          )}
 
-          {data.tienThem !== undefined && data.tienThem !== null && data.tienThem > 0 && (
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>{removeVietnameseDiacritics(data.loaiTienThem || 'Tien them')}:</Text>
-              <Text>{formatCurrency(data.tienThem)}</Text>
+              <Text style={styles.summaryLabel}>{removeVietnameseDiacritics('Tien cong gom:')}</Text>
+              <Text>{formatCurrency(data.tienCongGom)}</Text>
             </View>
-          )}
 
-          <View style={styles.divider} />
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>{removeVietnameseDiacritics('Phi dong hang:')}</Text>
+              <Text>{formatCurrency(data.phiDongHang)}</Text>
+            </View>
 
-          <View style={styles.totalRow}>
-            <Text>{removeVietnameseDiacritics('TONG TIEN:')}</Text>
-            <Text>{formatCurrency(data.tongTienHoaDon)}</Text>
+            {data.tienHoaHong > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>{removeVietnameseDiacritics('Tien hoa hong:')}</Text>
+                <Text>{formatCurrency(data.tienHoaHong)}</Text>
+              </View>
+            )}
+
+            {data.tienThem !== undefined && data.tienThem !== null && data.tienThem > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>{removeVietnameseDiacritics(data.loaiTienThem || 'Tien them')}:</Text>
+                <Text>{formatCurrency(data.tienThem)}</Text>
+              </View>
+            )}
+
+            <View style={styles.divider} />
           </View>
+        )}
+
+        {/* Total Row - Always show */}
+        <View style={styles.totalRow}>
+          <Text>{removeVietnameseDiacritics('TONG TIEN:')}</Text>
+          <Text>{formatCurrency(data.tongTienHoaDon)}</Text>
         </View>
 
         {/* Footer */}

@@ -7,6 +7,8 @@ import { useAuth } from '../../src/hooks/useAuth';
 import Avatar from '../../src/components/common/Avatar';
 import * as customersService from '../../src/services/customers.service';
 import { Customer } from '../../src/services/customers.service';
+import * as ordersService from '../../src/services/orders.service';
+import { Order } from '../../src/services/orders.service';
 
 const AdminCustomersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +27,17 @@ const AdminCustomersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // State cho lọc theo ngày
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    // Mặc định là ngày hôm nay
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  });
+  
+  // State để lưu đơn hàng của mỗi khách hàng theo ngày
+  const [customerOrders, setCustomerOrders] = useState<Record<string, Order[]>>({});
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   const loadCustomers = useCallback(async () => {
     setLoading(true);
@@ -43,6 +56,70 @@ const AdminCustomersPage: React.FC = () => {
   useEffect(() => {
     loadCustomers();
   }, [loadCustomers]);
+
+  // Load đơn hàng của tất cả khách hàng theo ngày được chọn
+  useEffect(() => {
+    const loadCustomerOrders = async () => {
+      if (customers.length === 0) return;
+      
+      setLoadingOrders(true);
+      try {
+        const ordersByCustomer: Record<string, Order[]> = {};
+        
+        // Load đơn hàng cho từng khách hàng
+        await Promise.all(
+          customers.map(async (customer) => {
+            try {
+              const orders = await ordersService.getOrdersList({
+                customerId: customer.id,
+                date: selectedDate,
+              });
+              ordersByCustomer[customer.id] = orders;
+            } catch (err) {
+              console.error(`Load orders for customer ${customer.id} error:`, err);
+              ordersByCustomer[customer.id] = [];
+            }
+          })
+        );
+        
+        setCustomerOrders(ordersByCustomer);
+      } catch (err: any) {
+        console.error('Load customer orders error:', err);
+      } finally {
+        setLoadingOrders(false);
+      }
+    };
+
+    loadCustomerOrders();
+  }, [customers, selectedDate]);
+
+  // Format ngày hiển thị
+  const formatDateDisplay = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00');
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Tính tổng tiền và số lượng đơn hàng của một khách hàng
+  const getCustomerOrderStats = (customerId: string) => {
+    const orders = customerOrders[customerId] || [];
+    const totalAmount = orders.reduce((sum, order) => sum + order.tongTienHoaDon, 0);
+    const totalTienHang = orders.reduce((sum, order) => sum + order.tienHang, 0);
+    const totalTienCongGom = orders.reduce((sum, order) => sum + order.tienCongGom, 0);
+    const totalPhiDongHang = orders.reduce((sum, order) => sum + order.phiDongHang, 0);
+    const totalTienHoaHong = orders.reduce((sum, order) => sum + (order.tienHoaHong || 0), 0);
+    return {
+      count: orders.length,
+      totalAmount,
+      totalTienHang,
+      totalTienCongGom,
+      totalPhiDongHang,
+      totalTienHoaHong,
+    };
+  };
+
 
   const handleCreateCustomer = async () => {
     if (!formData.name || !formData.name.trim()) {
@@ -252,6 +329,30 @@ const AdminCustomersPage: React.FC = () => {
               </button>
             </div>
 
+            {/* Bộ lọc ngày */}
+            <div className="mb-6">
+              <label className="flex flex-col w-full max-w-xs">
+                <p className="text-base font-medium text-gray-800 dark:text-gray-200 pb-2">
+                  Chọn ngày để xem hóa đơn
+                </p>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    calendar_month
+                  </span>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-primary h-14 pl-10 pr-4 text-base font-normal leading-normal"
+                    disabled={loading || loadingOrders}
+                  />
+                </div>
+                <p className="pt-2 text-sm text-gray-500 dark:text-gray-400">
+                  Đang xem: <span className="font-medium">{formatDateDisplay(selectedDate)}</span>
+                </p>
+              </label>
+            </div>
+
             {loading && (
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
@@ -281,6 +382,8 @@ const AdminCustomersPage: React.FC = () => {
                         <th className="px-6 py-3" scope="col">Tên khách hàng</th>
                         <th className="px-6 py-3" scope="col">Số điện thoại</th>
                         <th className="px-6 py-3" scope="col">Địa chỉ</th>
+                        <th className="px-6 py-3" scope="col">Hóa đơn ({formatDateDisplay(selectedDate)})</th>
+                        <th className="px-6 py-3" scope="col">Tổng tiền ({formatDateDisplay(selectedDate)})</th>
                         <th className="px-6 py-3" scope="col">Ngày tạo</th>
                         {user?.role !== 'worker' && (
                           <th className="px-6 py-3 text-center" scope="col">Thao tác</th>
@@ -288,88 +391,143 @@ const AdminCustomersPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {customers.map((customer) => (
-                    <tr
-                      key={customer.id}
-                      className="bg-white dark:bg-transparent border-b dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                    >
-                      <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                        {customer.name}
-                      </td>
-                      <td className="px-6 py-4">{customer.phone || '-'}</td>
-                      <td className="px-6 py-4">{customer.address || '-'}</td>
-                      <td className="px-6 py-4">
-                        {new Date(customer.createdAt).toLocaleDateString('vi-VN')}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {user?.role !== 'worker' && (
-                          <>
-                            <button
-                              onClick={() => handleEditCustomer(customer)}
-                              className="font-medium text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-white mr-4"
-                            >
-                              Sửa
-                            </button>
-                            <button
-                              onClick={() => handleDeleteCustomer(customer.id)}
-                              className="font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                            >
-                              Xóa
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                      {customers.map((customer) => {
+                        const stats = getCustomerOrderStats(customer.id);
+                        return (
+                          <tr
+                            key={customer.id}
+                            onClick={() => navigate(RoutePath.CUSTOMER_DETAIL.replace(':id', customer.id))}
+                            className="bg-white dark:bg-transparent border-b dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
+                          >
+                            <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                              {customer.name}
+                            </td>
+                            <td className="px-6 py-4">{customer.phone || '-'}</td>
+                            <td className="px-6 py-4">{customer.address || '-'}</td>
+                            <td className="px-6 py-4">
+                              {loadingOrders ? (
+                                <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                              ) : (
+                                <span className="font-medium">{stats.count} đơn</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              {loadingOrders ? (
+                                <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                              ) : (
+                                <span className="font-semibold text-primary dark:text-primary-light">
+                                  {stats.totalAmount.toLocaleString('vi-VN')}đ
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              {customer.createdAt ? new Date(customer.createdAt).toLocaleDateString('vi-VN') : '-'}
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              {user?.role !== 'worker' && (
+                                <>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditCustomer(customer);
+                                    }}
+                                    className="font-medium text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-white mr-4"
+                                  >
+                                    Sửa
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteCustomer(customer.id);
+                                    }}
+                                    className="font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                  >
+                                    Xóa
+                                  </button>
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                 </tbody>
               </table>
             </div>
 
                 {/* Mobile Card List */}
                 <div className="space-y-4 lg:hidden">
-                  {customers.map((customer) => (
-                <div
-                  key={customer.id}
-                  className="bg-white dark:bg-[#111827] rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/60"
-                >
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex-1">
-                      <p className="font-bold text-base text-gray-900 dark:text-white">
-                        {customer.name}
-                      </p>
-                      {customer.phone && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          {customer.phone}
-                        </p>
-                      )}
-                      {customer.address && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {customer.address}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                        Ngày tạo: {new Date(customer.createdAt).toLocaleDateString('vi-VN')}
-                      </p>
-                    </div>
-                    {user?.role !== 'worker' && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEditCustomer(customer)}
-                          className="text-primary hover:text-primary-dark"
-                        >
-                          <span className="material-symbols-outlined">edit</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCustomer(customer.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <span className="material-symbols-outlined">delete</span>
-                        </button>
+                  {customers.map((customer) => {
+                    const stats = getCustomerOrderStats(customer.id);
+                    return (
+                      <div
+                        key={customer.id}
+                        onClick={() => navigate(RoutePath.CUSTOMER_DETAIL.replace(':id', customer.id))}
+                        className="bg-white dark:bg-[#111827] rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/60 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                      >
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <p className="font-bold text-base text-gray-900 dark:text-white">
+                              {customer.name}
+                            </p>
+                            {customer.phone && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                {customer.phone}
+                              </p>
+                            )}
+                            {customer.address && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {customer.address}
+                              </p>
+                            )}
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                              <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">
+                                Hóa đơn ngày {formatDateDisplay(selectedDate)}:
+                              </p>
+                              {loadingOrders ? (
+                                <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary mt-1"></div>
+                              ) : (
+                                <>
+                                  <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">
+                                    Số lượng: <span className="font-semibold">{stats.count} đơn</span>
+                                  </p>
+                                  <p className="text-sm text-primary dark:text-primary-light font-semibold mt-1">
+                                    Tổng tiền: {stats.totalAmount.toLocaleString('vi-VN')}đ
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                              Ngày tạo: {customer.createdAt ? new Date(customer.createdAt).toLocaleDateString('vi-VN') : '-'}
+                            </p>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            {user?.role !== 'worker' && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditCustomer(customer);
+                                  }}
+                                  className="text-primary hover:text-primary-dark"
+                                >
+                                  <span className="material-symbols-outlined">edit</span>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteCustomer(customer.id);
+                                  }}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <span className="material-symbols-outlined">delete</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })}
               </div>
               </>
             )}

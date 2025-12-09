@@ -125,11 +125,12 @@ const CreateOrderPage: () => React.JSX.Element = () => {
   const phiDongHang = parseMoneyValue(phiDongHangInput);
   const tienHoaHong = parseMoneyValue(tienHoaHongInput);
 
-  // Tính toán tự động
+  // Tính toán tự động - tổng tiền hóa đơn bao gồm cả tiền hoa hồng
   const tongTienHoaDon =
     (isNaN(tienHang) ? 0 : tienHang) +
     (isNaN(tienCongGom) ? 0 : tienCongGom) +
-    (isNaN(phiDongHang) ? 0 : phiDongHang);
+    (isNaN(phiDongHang) ? 0 : phiDongHang) +
+    (isNaN(tienHoaHong) ? 0 : tienHoaHong);
 
   const handleSave = async () => {
     if (!shiftId) {

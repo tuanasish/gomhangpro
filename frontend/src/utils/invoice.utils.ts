@@ -20,7 +20,9 @@ export interface InvoiceData {
     description: string;
     quantity?: number;
     price?: number;
+    counterName?: string; // Tên quầy cho từng item
   }>;
+  simpleMode?: boolean; // Chế độ đơn giản: chỉ hiển thị STT, Quầy, Tổng tiền
 }
 
 /**
