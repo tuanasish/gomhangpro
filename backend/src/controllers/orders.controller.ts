@@ -2,13 +2,21 @@ import { Request, Response } from 'express';
 import { ApiResponse, Order } from '../types/index.js';
 import { supabase } from '../config/supabase.js';
 
+const parseMoney = (val: any) => {
+  if (val === null || val === undefined || val === '') return 0;
+  const parsed = parseFloat(val);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 /**
  * Lấy danh sách đơn hàng
  */
 export async function getOrdersList(req: Request, res: Response<ApiResponse<Order[]>>): Promise<void> {
   try {
     const { shiftId, customerId, date, status } = req.query;
-    
+    const userId = (req as any).user?.userId;
+    const userRole = (req as any).user?.role;
+
     let query = supabase
       .from('orders')
       .select(`
@@ -19,6 +27,11 @@ export async function getOrdersList(req: Request, res: Response<ApiResponse<Orde
       `)
       .order('created_at', { ascending: false });
 
+    // Worker chỉ xem đơn của mình
+    if (userRole === 'worker' && userId) {
+      query = query.eq('staff_id', userId);
+    }
+
     if (shiftId && typeof shiftId === 'string') {
       query = query.eq('shift_id', shiftId);
     }
@@ -28,9 +41,9 @@ export async function getOrdersList(req: Request, res: Response<ApiResponse<Orde
     }
 
     if (date && typeof date === 'string') {
-      // Filter by date using created_at
-      const startDate = `${date}T00:00:00.000Z`;
-      const endDate = `${date}T23:59:59.999Z`;
+      // Filter by date using Vietnam timezone (UTC+7)
+      const startDate = `${date}T00:00:00+07:00`;
+      const endDate = `${date}T23:59:59+07:00`;
       query = query.gte('created_at', startDate).lte('created_at', endDate);
     }
 
@@ -60,13 +73,13 @@ export async function getOrdersList(req: Request, res: Response<ApiResponse<Orde
         counterName: order.counter?.name,
         staffId: order.staff_id || undefined, // Convert null to undefined
         staffName: order.staff?.name,
-        tienHang: parseFloat(order.tien_hang),
-        tienCongGom: parseFloat(order.tien_cong_gom),
-        phiDongHang: parseFloat(order.phi_dong_hang),
-        tienHoaHong: parseFloat(order.tien_hoa_hong || 0),
-        tienThem: order.tien_them ? parseFloat(order.tien_them) : undefined,
+        tienHang: parseMoney(order.tien_hang),
+        tienCongGom: parseMoney(order.tien_cong_gom),
+        phiDongHang: parseMoney(order.phi_dong_hang),
+        tienHoaHong: parseMoney(order.tien_hoa_hong),
+        tienThem: order.tien_them ? parseMoney(order.tien_them) : undefined,
         loaiTienThem: order.loai_tien_them || undefined,
-        tongTienHoaDon: parseFloat(order.tong_tien_hoa_don),
+        tongTienHoaDon: parseMoney(order.tong_tien_hoa_don),
         status: order.status,
         createdAt: new Date(order.created_at),
         updatedAt: new Date(order.updated_at),
@@ -118,13 +131,13 @@ export async function getOrderById(req: Request<{ id: string }>, res: Response<A
         counterName: order.counter?.name,
         staffId: order.staff_id || undefined, // Convert null to undefined
         staffName: order.staff?.name,
-        tienHang: parseFloat(order.tien_hang),
-        tienCongGom: parseFloat(order.tien_cong_gom),
-        phiDongHang: parseFloat(order.phi_dong_hang),
-        tienHoaHong: parseFloat(order.tien_hoa_hong || 0),
-        tienThem: order.tien_them ? parseFloat(order.tien_them) : undefined,
+        tienHang: parseMoney(order.tien_hang),
+        tienCongGom: parseMoney(order.tien_cong_gom),
+        phiDongHang: parseMoney(order.phi_dong_hang),
+        tienHoaHong: parseMoney(order.tien_hoa_hong),
+        tienThem: order.tien_them ? parseMoney(order.tien_them) : undefined,
         loaiTienThem: order.loai_tien_them || undefined,
-        tongTienHoaDon: parseFloat(order.tong_tien_hoa_don),
+        tongTienHoaDon: parseMoney(order.tong_tien_hoa_don),
         status: order.status,
         createdAt: new Date(order.created_at),
         updatedAt: new Date(order.updated_at),
@@ -177,13 +190,13 @@ export async function getOrdersByShift(req: Request<{ shiftId: string }>, res: R
         counterName: order.counter?.name,
         staffId: order.staff_id || undefined, // Convert null to undefined
         staffName: order.staff?.name,
-        tienHang: parseFloat(order.tien_hang),
-        tienCongGom: parseFloat(order.tien_cong_gom),
-        phiDongHang: parseFloat(order.phi_dong_hang),
-        tienHoaHong: parseFloat(order.tien_hoa_hong || 0),
-        tienThem: order.tien_them ? parseFloat(order.tien_them) : undefined,
+        tienHang: parseMoney(order.tien_hang),
+        tienCongGom: parseMoney(order.tien_cong_gom),
+        phiDongHang: parseMoney(order.phi_dong_hang),
+        tienHoaHong: parseMoney(order.tien_hoa_hong),
+        tienThem: order.tien_them ? parseMoney(order.tien_them) : undefined,
         loaiTienThem: order.loai_tien_them || undefined,
-        tongTienHoaDon: parseFloat(order.tong_tien_hoa_don),
+        tongTienHoaDon: parseMoney(order.tong_tien_hoa_don),
         status: order.status,
         createdAt: new Date(order.created_at),
         updatedAt: new Date(order.updated_at),
@@ -216,12 +229,14 @@ export async function createOrder(
       tienCongGom: number;
       phiDongHang: number;
       tienHoaHong?: number;
+      tienThem?: number;
+      loaiTienThem?: string;
     }
   >,
   res: Response
 ): Promise<void> {
   try {
-    const { shiftId, customerId, customerName, customerPhone, counterId, counterName, tienHang, tienCongGom, phiDongHang, tienHoaHong = 0 } = req.body;
+    const { shiftId, customerId, customerName, customerPhone, counterId, counterName, tienHang, tienCongGom, phiDongHang, tienHoaHong = 0, tienThem = 0, loaiTienThem } = req.body;
     const userId = (req as any).user?.userId;
 
     if (!userId) {
@@ -233,7 +248,7 @@ export async function createOrder(
     }
 
     // Validation cơ bản
-    if (!shiftId || !tienHang || tienHang <= 0) {
+    if (!shiftId || tienHang === undefined || tienHang === null || tienHang < 0) {
       res.status(400).json({
         success: false,
         error: 'Thông tin không hợp lệ',
@@ -338,18 +353,10 @@ export async function createOrder(
       finalCounterId = newCounter.id;
     }
 
-    // Tính tổng tiền hóa đơn - bao gồm cả tiền hoa hồng (khách hàng phải trả tổng này)
-    const tongTienHoaDon = tienHang + tienCongGom + phiDongHang + (tienHoaHong || 0);
+    // Tính tổng tiền hóa đơn - bao gồm cả tiền hoa hồng và thuế (khách hàng phải trả tổng này)
+    const tongTienHoaDon = tienHang + tienCongGom + phiDongHang + (tienHoaHong || 0) + (tienThem || 0);
 
-    // Kiểm tra quỹ còn lại có đủ không
-    const quyConLaiHienTai = parseFloat(shift.quy_con_lai || 0);
-    if (quyConLaiHienTai < tienHang) {
-      res.status(400).json({
-        success: false,
-        error: `Quỹ không đủ. Quỹ còn lại: ${quyConLaiHienTai.toLocaleString('vi-VN')}đ, cần: ${tienHang.toLocaleString('vi-VN')}đ`,
-      });
-      return;
-    }
+    // Xoá logic chặn âm quỹ để cho phép nhân viên tiếp tục tạo đơn trả hàng dù quỹ âm
 
     // Tạo đơn hàng và cập nhật shift trong transaction (Supabase không hỗ trợ transaction trực tiếp, nên làm tuần tự)
     // Bước 1: Tạo đơn hàng
@@ -364,6 +371,8 @@ export async function createOrder(
         tien_cong_gom: tienCongGom || 0,
         phi_dong_hang: phiDongHang || 0,
         tien_hoa_hong: tienHoaHong || 0,
+        tien_them: tienThem || 0,
+        loai_tien_them: loaiTienThem || null,
         tong_tien_hoa_don: tongTienHoaDon,
         status: 'pending',
       })
@@ -385,8 +394,8 @@ export async function createOrder(
     }
 
     // Bước 2: Cập nhật shift
-    const tongTienHangDaTraMoi = parseFloat(shift.tong_tien_hang_da_tra || 0) + tienHang;
-    const quyConLaiMoi = parseFloat(shift.tien_giao_ca) - tongTienHangDaTraMoi;
+    const tongTienHangDaTraMoi = parseMoney(shift.tong_tien_hang_da_tra) + tienHang;
+    const quyConLaiMoi = parseMoney(shift.tien_giao_ca) - tongTienHangDaTraMoi;
 
     const { error: shiftUpdateError } = await supabase
       .from('shifts')
@@ -463,10 +472,10 @@ export async function updateOrder(
     const userRole = (req as any).user?.role;
 
     // Chỉ admin mới có quyền sửa các trường tiền
-    const isEditingMoneyFields = tienHang !== undefined || tienCongGom !== undefined || 
-                                  phiDongHang !== undefined || tienHoaHong !== undefined || 
-                                  tienThem !== undefined || loaiTienThem !== undefined;
-    
+    const isEditingMoneyFields = tienHang !== undefined || tienCongGom !== undefined ||
+      phiDongHang !== undefined || tienHoaHong !== undefined ||
+      tienThem !== undefined || loaiTienThem !== undefined;
+
     if (isEditingMoneyFields && userRole !== 'admin') {
       res.status(403).json({
         success: false,
@@ -500,12 +509,12 @@ export async function updateOrder(
     if (loaiTienThem !== undefined) updateData.loai_tien_them = loaiTienThem || null;
 
     // Tính lại tong_tien_hoa_don nếu có thay đổi
-    const finalTienHang = tienHang !== undefined ? tienHang : parseFloat(existingOrder.tien_hang);
-    const finalTienCongGom = tienCongGom !== undefined ? tienCongGom : parseFloat(existingOrder.tien_cong_gom);
-    const finalPhiDongHang = phiDongHang !== undefined ? phiDongHang : parseFloat(existingOrder.phi_dong_hang);
-    const finalTienHoaHong = tienHoaHong !== undefined ? tienHoaHong : parseFloat(existingOrder.tien_hoa_hong || 0);
-    const finalTienThem = tienThem !== undefined ? (tienThem || 0) : parseFloat(existingOrder.tien_them || 0);
-    
+    const finalTienHang = tienHang !== undefined ? tienHang : parseMoney(existingOrder.tien_hang);
+    const finalTienCongGom = tienCongGom !== undefined ? tienCongGom : parseMoney(existingOrder.tien_cong_gom);
+    const finalPhiDongHang = phiDongHang !== undefined ? phiDongHang : parseMoney(existingOrder.phi_dong_hang);
+    const finalTienHoaHong = tienHoaHong !== undefined ? tienHoaHong : parseMoney(existingOrder.tien_hoa_hong);
+    const finalTienThem = tienThem !== undefined ? tienThem : parseMoney(existingOrder.tien_them);
+
     updateData.tong_tien_hoa_don = finalTienHang + finalTienCongGom + finalPhiDongHang + finalTienHoaHong + finalTienThem;
 
     const { data: updatedOrder, error } = await supabase
@@ -529,6 +538,42 @@ export async function updateOrder(
       return;
     }
 
+    // --- Cập nhật lại shift nếu có thay đổi về tiền hàng hoặc trạng thái ---
+    let oldContribution = 0;
+    if (existingOrder.status !== 'cancelled') {
+      oldContribution = parseMoney(existingOrder.tien_hang);
+    }
+
+    let newContribution = 0;
+    const finalStatus = status || existingOrder.status;
+    if (finalStatus !== 'cancelled') {
+      newContribution = finalTienHang;
+    }
+
+    const difference = newContribution - oldContribution;
+
+    if (difference !== 0) {
+      const { data: shift } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('id', existingOrder.shift_id)
+        .single();
+
+      if (shift) {
+        const tongTienHangDaTraMoi = parseMoney(shift.tong_tien_hang_da_tra) + difference;
+        const quyConLaiMoi = parseMoney(shift.tien_giao_ca) - tongTienHangDaTraMoi;
+
+        await supabase
+          .from('shifts')
+          .update({
+            tong_tien_hang_da_tra: tongTienHangDaTraMoi,
+            quy_con_lai: quyConLaiMoi,
+          })
+          .eq('id', existingOrder.shift_id);
+      }
+    }
+    // -----------------------------------------------------------------------
+
     res.json({
       success: true,
       data: {
@@ -540,13 +585,13 @@ export async function updateOrder(
         counterName: updatedOrder.counter?.name,
         staffId: updatedOrder.staff_id,
         staffName: updatedOrder.staff?.name,
-        tienHang: parseFloat(updatedOrder.tien_hang),
-        tienCongGom: parseFloat(updatedOrder.tien_cong_gom),
-        phiDongHang: parseFloat(updatedOrder.phi_dong_hang),
-        tienHoaHong: parseFloat(updatedOrder.tien_hoa_hong || 0),
-        tienThem: updatedOrder.tien_them ? parseFloat(updatedOrder.tien_them) : undefined,
+        tienHang: parseMoney(updatedOrder.tien_hang),
+        tienCongGom: parseMoney(updatedOrder.tien_cong_gom),
+        phiDongHang: parseMoney(updatedOrder.phi_dong_hang),
+        tienHoaHong: parseMoney(updatedOrder.tien_hoa_hong),
+        tienThem: updatedOrder.tien_them ? parseMoney(updatedOrder.tien_them) : undefined,
         loaiTienThem: updatedOrder.loai_tien_them || undefined,
-        tongTienHoaDon: parseFloat(updatedOrder.tong_tien_hoa_don),
+        tongTienHoaDon: parseMoney(updatedOrder.tong_tien_hoa_don),
         status: updatedOrder.status,
         createdAt: new Date(updatedOrder.created_at),
         updatedAt: new Date(updatedOrder.updated_at),

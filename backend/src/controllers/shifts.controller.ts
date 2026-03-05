@@ -3,6 +3,19 @@ import { ApiResponse, Shift, ShiftMoneyAddition } from '../types/index.js';
 import { supabase } from '../config/supabase.js';
 
 /**
+ * Lấy ngày hiện tại theo múi giờ Việt Nam (GMT+7) định dạng YYYY-MM-DD
+ */
+function getVietnamDateStr(): string {
+  const d = new Date();
+  const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+  const vnTime = new Date(utc + (3600000 * 7));
+  const yyyy = vnTime.getFullYear();
+  const mm = String(vnTime.getMonth() + 1).padStart(2, '0');
+  const dd = String(vnTime.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
  * Lấy danh sách ca làm việc
  */
 export async function getShiftsList(req: Request, res: Response<ApiResponse<Shift[]>>): Promise<void> {
@@ -11,7 +24,7 @@ export async function getShiftsList(req: Request, res: Response<ApiResponse<Shif
     await autoResetExpiredShifts();
 
     const { staffId, date, status } = req.query;
-    
+
     let query = supabase
       .from('shifts')
       .select(`
@@ -126,15 +139,12 @@ export async function getShiftById(req: Request<{ id: string }>, res: Response<A
 }
 
 /**
- * Lấy ca hiện tại của worker (active)
+ * Tự động tạo và vào ca cho worker (tiền giao ca = 0)
  */
-export async function getCurrentShift(req: Request, res: Response<ApiResponse<Shift>>): Promise<void> {
+export async function autoStartShift(req: Request, res: Response<ApiResponse<Shift>>): Promise<void> {
   try {
-    // Auto-reset các ca đã hết hạn trước khi lấy ca hiện tại
-    await autoResetExpiredShifts();
-
     const userId = (req as any).user?.userId;
-    
+
     if (!userId) {
       res.status(401).json({
         success: false,
@@ -143,7 +153,105 @@ export async function getCurrentShift(req: Request, res: Response<ApiResponse<Sh
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const today = getVietnamDateStr(); // YYYY-MM-DD
+
+    // Kiểm tra nhân viên đã có ca active trong ngày chưa
+    const { data: existingShift } = await supabase
+      .from('shifts')
+      .select('id')
+      .eq('staff_id', userId)
+      .eq('date', today)
+      .eq('status', 'active')
+      .single();
+
+    if (existingShift) {
+      res.status(400).json({
+        success: false,
+        error: 'Bạn đã có ca làm việc đang hoạt động trong ngày hôm nay',
+      });
+      return;
+    }
+
+    const startTime = new Date().toISOString();
+
+    const insertData: any = {
+      staff_id: userId,
+      date: today,
+      start_time: startTime,
+      tien_giao_ca: 0,
+      tien_giao_ca_ban_dau: 0,
+      tong_tien_hang_da_tra: 0,
+      quy_con_lai: 0,
+      status: 'active',
+    };
+
+    const { data: newShift, error } = await supabase
+      .from('shifts')
+      .insert(insertData)
+      .select(`
+        *,
+        staff:users!shifts_staff_id_fkey(id, name),
+        counter:counters!shifts_counter_id_fkey(id, name)
+      `)
+      .single();
+
+    if (error || !newShift) {
+      console.error('Auto start shift error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Lỗi tự động tạo ca làm việc. Vui lòng thử lại.',
+      });
+      return;
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: newShift.id,
+        staffId: newShift.staff_id,
+        staffName: newShift.staff?.name,
+        counterId: newShift.counter_id || undefined,
+        counterName: newShift.counter?.name,
+        date: newShift.date,
+        startTime: new Date(newShift.start_time),
+        endTime: newShift.end_time ? new Date(newShift.end_time) : undefined,
+        tienGiaoCa: parseFloat(newShift.tien_giao_ca),
+        tongTienHangDaTra: parseFloat(newShift.tong_tien_hang_da_tra || 0),
+        quyConLai: parseFloat(newShift.quy_con_lai || 0),
+        status: newShift.status,
+        createdAt: new Date(newShift.created_at),
+        updatedAt: new Date(newShift.updated_at),
+      },
+      message: 'Bắt đầu ca làm việc thành công',
+    });
+  } catch (error: any) {
+    console.error('Auto start shift error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Lỗi tự động tạo ca làm việc',
+    });
+  }
+}
+
+/**
+ * Lấy ca hiện tại của worker (active)
+ */
+export async function getCurrentShift(req: Request, res: Response<ApiResponse<Shift>>): Promise<void> {
+  try {
+    // Auto-reset các ca đã hết hạn trước khi lấy ca hiện tại
+    await autoResetExpiredShifts();
+
+    const userId = (req as any).user?.userId;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'Chưa đăng nhập',
+      });
+      return;
+    }
+
+    const today = getVietnamDateStr(); // YYYY-MM-DD
 
     const { data: shift, error } = await supabase
       .from('shifts')
@@ -434,9 +542,7 @@ export async function startShift(req: Request<{ id: string }>, res: Response<Api
  * Gọi function này trước khi lấy danh sách ca hoặc ca hiện tại
  */
 async function autoResetExpiredShifts(): Promise<void> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // Set to beginning of today
-  const todayISO = today.toISOString().split('T')[0];
+  const todayISO = getVietnamDateStr();
 
   // Tìm các ca active có date < today (ca của ngày hôm qua hoặc trước đó)
   const { data: expiredShifts, error } = await supabase

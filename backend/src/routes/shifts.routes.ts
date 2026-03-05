@@ -1,12 +1,13 @@
 import { Router } from 'express';
-import { 
-  getShiftsList, 
-  getShiftById, 
-  getCurrentShift, 
-  createShift, 
-  startShift, 
-  endShift, 
-  addMoneyToShift, 
+import {
+  getShiftsList,
+  getShiftById,
+  getCurrentShift,
+  createShift,
+  autoStartShift,
+  startShift,
+  endShift,
+  addMoneyToShift,
   updateShiftMoney,
   getShiftMoneyAdditions,
   updateShiftMoneyAddition,
@@ -36,6 +37,13 @@ router.get('/current', authenticate, authorize('worker'), getCurrentShift);
  * @access  Private (Manager/Admin)
  */
 router.post('/', authenticate, authorize('manager', 'admin'), createShift);
+
+/**
+ * @route   POST /api/shifts/auto-start
+ * @desc    Tự động bắt đầu ca cho worker (quỹ 0đ)
+ * @access  Private (Worker)
+ */
+router.post('/auto-start', authenticate, authorize('worker'), autoStartShift);
 
 /**
  * @route   GET /api/shifts/:id/money-additions

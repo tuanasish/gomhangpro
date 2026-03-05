@@ -8,20 +8,19 @@ import { supabase } from '../config/supabase.js';
 export async function getCustomersList(req: Request, res: Response<ApiResponse<Customer[]>>): Promise<void> {
   try {
     const { search, phone } = req.query;
-    
+
     let query = supabase
       .from('customers')
       .select('*')
       .order('created_at', { ascending: false });
 
-    // Filter by search (name)
+    // If search parameter is provided, search in both name and phone
     if (search && typeof search === 'string') {
-      query = query.ilike('name', `%${search}%`);
-    }
-
-    // Filter by phone
-    if (phone && typeof phone === 'string') {
-      query = query.ilike('phone', `%${phone}%`);
+      const searchTerm = search.trim();
+      query = query.or(`name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`);
+    } else if (phone && typeof phone === 'string') {
+      const phoneTerm = phone.trim();
+      query = query.or(`name.ilike.%${phoneTerm}%,phone.ilike.%${phoneTerm}%`);
     }
 
     const { data: customers, error } = await query;
