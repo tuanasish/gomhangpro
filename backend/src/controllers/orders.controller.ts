@@ -431,6 +431,8 @@ export async function createOrder(
         tienCongGom: parseFloat(newOrder.tien_cong_gom),
         phiDongHang: parseFloat(newOrder.phi_dong_hang),
         tienHoaHong: parseFloat(newOrder.tien_hoa_hong || 0),
+        tienThem: newOrder.tien_them ? parseFloat(newOrder.tien_them) : undefined,
+        loaiTienThem: newOrder.loai_tien_them || undefined,
         tongTienHoaDon: parseFloat(newOrder.tong_tien_hoa_don),
         status: newOrder.status,
         createdAt: new Date(newOrder.created_at),

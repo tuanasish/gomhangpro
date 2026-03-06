@@ -28,15 +28,15 @@ router.post('/', authenticate, authorize('worker', 'manager', 'admin'), createCo
 /**
  * @route   PUT /api/counters/:id
  * @desc    Cập nhật quầy
- * @access  Private (Manager/Admin)
+ * @access  Private (Worker/Manager/Admin)
  */
-router.put('/:id', authenticate, authorize('manager', 'admin'), updateCounter);
+router.put('/:id', authenticate, authorize('worker', 'manager', 'admin'), updateCounter);
 
 /**
  * @route   DELETE /api/counters/:id
  * @desc    Xóa/Deactivate quầy
- * @access  Private (Manager/Admin)
+ * @access  Private (Worker/Manager/Admin)
  */
-router.delete('/:id', authenticate, authorize('manager', 'admin'), deleteCounter);
+router.delete('/:id', authenticate, authorize('worker', 'manager', 'admin'), deleteCounter);
 
 export default router;

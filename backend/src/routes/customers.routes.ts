@@ -28,15 +28,15 @@ router.post('/', authenticate, authorize('worker', 'manager', 'admin'), createCu
 /**
  * @route   PUT /api/customers/:id
  * @desc    Cập nhật khách hàng
- * @access  Private (Manager/Admin)
+ * @access  Private (Worker/Manager/Admin)
  */
-router.put('/:id', authenticate, authorize('manager', 'admin'), updateCustomer);
+router.put('/:id', authenticate, authorize('worker', 'manager', 'admin'), updateCustomer);
 
 /**
  * @route   DELETE /api/customers/:id
  * @desc    Xóa khách hàng
- * @access  Private (Manager/Admin)
+ * @access  Private (Worker/Manager/Admin)
  */
-router.delete('/:id', authenticate, authorize('manager', 'admin'), deleteCustomer);
+router.delete('/:id', authenticate, authorize('worker', 'manager', 'admin'), deleteCustomer);
 
 export default router;
