@@ -31,7 +31,7 @@ export async function getShiftsList(req: Request, res: Response<ApiResponse<Shif
         *,
         staff:users!shifts_staff_id_fkey(id, name),
         counter:counters!shifts_counter_id_fkey(id, name),
-        orders:orders(count)
+        orders:orders(id, status)
       `)
       .order('created_at', { ascending: false });
 
@@ -47,9 +47,6 @@ export async function getShiftsList(req: Request, res: Response<ApiResponse<Shif
       query = query.eq('status', status);
     }
 
-    // Lọc orders không bị hủy (pending hoặc completed)
-    query = query.neq('orders.status', 'cancelled');
-
     const { data: shifts, error } = await query;
 
     if (error) {
@@ -63,23 +60,28 @@ export async function getShiftsList(req: Request, res: Response<ApiResponse<Shif
 
     res.json({
       success: true,
-      data: shifts.map((shift: any) => ({
-        id: shift.id,
-        staffId: shift.staff_id,
-        staffName: shift.staff?.name,
-        counterId: shift.counter_id || undefined,
-        counterName: shift.counter?.name,
-        date: shift.date,
-        startTime: new Date(shift.start_time),
-        endTime: shift.end_time ? new Date(shift.end_time) : undefined,
-        tienGiaoCa: parseFloat(shift.tien_giao_ca),
-        tongTienHangDaTra: parseFloat(shift.tong_tien_hang_da_tra || 0),
-        quyConLai: parseFloat(shift.quy_con_lai || 0),
-        status: shift.status,
-        soDonHang: shift.orders?.[0]?.count || 0,
-        createdAt: new Date(shift.created_at),
-        updatedAt: new Date(shift.updated_at),
-      })),
+      data: shifts.map((shift: any) => {
+        // Lọc orders không bị hủy
+        const validOrders = shift.orders ? shift.orders.filter((o: any) => o.status !== 'cancelled') : [];
+
+        return {
+          id: shift.id,
+          staffId: shift.staff_id,
+          staffName: shift.staff?.name,
+          counterId: shift.counter_id || undefined,
+          counterName: shift.counter?.name,
+          date: shift.date,
+          startTime: new Date(shift.start_time),
+          endTime: shift.end_time ? new Date(shift.end_time) : undefined,
+          tienGiaoCa: parseFloat(shift.tien_giao_ca),
+          tongTienHangDaTra: parseFloat(shift.tong_tien_hang_da_tra || 0),
+          quyConLai: parseFloat(shift.quy_con_lai || 0),
+          status: shift.status,
+          soDonHang: validOrders.length,
+          createdAt: new Date(shift.created_at),
+          updatedAt: new Date(shift.updated_at),
+        };
+      }),
     });
   } catch (error: any) {
     console.error('Get shifts list error:', error);
