@@ -374,7 +374,7 @@ export async function createOrder(
         tien_them: tienThem || 0,
         loai_tien_them: loaiTienThem || null,
         tong_tien_hoa_don: tongTienHoaDon,
-        status: 'pending',
+        status: 'completed',
       })
       .select(`
         *,
@@ -629,10 +629,10 @@ export async function deleteOrder(req: Request<{ id: string }>, res: Response<Ap
       return;
     }
 
-    if (order.status !== 'pending') {
+    if (order.status === 'cancelled') {
       res.status(400).json({
         success: false,
-        error: 'Chỉ có thể xóa đơn hàng đang pending',
+        error: 'Đơn hàng đã bị hủy, không thể xóa.',
       });
       return;
     }

@@ -30,7 +30,8 @@ export async function getShiftsList(req: Request, res: Response<ApiResponse<Shif
       .select(`
         *,
         staff:users!shifts_staff_id_fkey(id, name),
-        counter:counters!shifts_counter_id_fkey(id, name)
+        counter:counters!shifts_counter_id_fkey(id, name),
+        orders:orders(count)
       `)
       .order('created_at', { ascending: false });
 
@@ -45,6 +46,9 @@ export async function getShiftsList(req: Request, res: Response<ApiResponse<Shif
     if (status && typeof status === 'string') {
       query = query.eq('status', status);
     }
+
+    // Lọc orders không bị hủy (pending hoặc completed)
+    query = query.neq('orders.status', 'cancelled');
 
     const { data: shifts, error } = await query;
 
@@ -72,6 +76,7 @@ export async function getShiftsList(req: Request, res: Response<ApiResponse<Shif
         tongTienHangDaTra: parseFloat(shift.tong_tien_hang_da_tra || 0),
         quyConLai: parseFloat(shift.quy_con_lai || 0),
         status: shift.status,
+        soDonHang: shift.orders?.[0]?.count || 0,
         createdAt: new Date(shift.created_at),
         updatedAt: new Date(shift.updated_at),
       })),
