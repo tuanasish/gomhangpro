@@ -51,11 +51,24 @@ Thumbs.db
 # AI and IDE context
 .brain/
 .cursor/
+docs/
 
 # Temporary and design files
-*.js
-!eslint.config.js
-!prettier.config.js
-!commitlint.config.js
+update_*.js
+test_*.cjs
+test_*.js
+test_*.txt
+test_*.ts
+test.ts
+test2.ts
+test3.ts
+test4.ts
+login_res.json
+users_dump*.json
+v_projects.txt
+audit_log.json
+deploy_log*.txt
+web_deploy_log*.txt
+builds.txt
 image.png
 plan.txt
