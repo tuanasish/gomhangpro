@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, TokenPayload } from '../utils/jwt.utils.js';
 import { ApiResponse } from '../types/index.js';
+import { supabase } from '../config/supabase.js';
 
 // Extend Express Request to include user
 declare global {
@@ -30,8 +31,24 @@ export function authenticate(req: Request, res: Response<ApiResponse>, next: Nex
 
     try {
       const payload = verifyAccessToken(token);
-      req.user = payload;
-      next();
+
+      // Check if user still exists in database
+      supabase
+        .from('users')
+        .select('id')
+        .eq('id', payload.userId)
+        .single()
+        .then(({ data, error }: { data: any; error: any }) => {
+          if (error || !data) {
+            res.status(401).json({
+              success: false,
+              error: 'Tài khoản không còn tồn tại. Vui lòng đăng nhập lại.',
+            });
+            return;
+          }
+          req.user = payload;
+          next();
+        });
     } catch (error) {
       res.status(401).json({
         success: false,

@@ -174,7 +174,13 @@ const CreateOrderPage: () => React.JSX.Element = () => {
     if (customer.defaultTienCongGom !== undefined && customer.defaultTienCongGom !== null) {
       setTienCongGomInput(formatMoneyInput(customer.defaultTienCongGom.toString()));
     }
-    setCustomerSuggestions([]);
+    // Dùng trường address như "thuế mặc định" cho khách nếu có
+    if (customer.address) {
+      const rawTax = customer.address.replace(/[^\d]/g, '');
+      if (rawTax) {
+        setPhiDongHangInput(formatMoneyInput(rawTax));
+      }
+    }
     setCustomerSuggestions([]);
   };
 

@@ -83,7 +83,15 @@ const ManagerDashboardPage: React.FC = () => {
     return staff?.staffName || '';
   }, [staffSpendingList, selectedStaffId]);
 
-  const { activeShifts, totalTienGiaoCa, ordersToday, totalRevenueToday, totalTienGiaoCaTheoNgay, totalTienHangDaTraTheoNgay, totalTienHoaHongTheoNgay } = stats;
+  const {
+    activeShifts,
+    totalTienGiaoCa,
+    ordersToday,
+    totalRevenueToday,
+    totalTienGiaoCaTheoNgay,
+    totalTienHangDaTraTheoNgay,
+    totalTienHoaHongTheoNgay,
+  } = stats;
 
   return (
     <div className="relative flex min-h-screen w-full bg-background-light dark:bg-background-dark">
@@ -253,6 +261,12 @@ const ManagerDashboardPage: React.FC = () => {
                       <p className="text-gray-900 dark:text-white text-sm">Nhân viên đã chi</p>
                       <p className="text-primary font-bold">
                         {totalTienHangDaTraTheoNgay.toLocaleString('vi-VN')}₫
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                      <p className="text-gray-900 dark:text-white text-sm">Tổng tiền hóa đơn (khách đóng)</p>
+                      <p className="text-gray-900 dark:text-white font-bold">
+                        {totalRevenueToday.toLocaleString('vi-VN')}₫
                       </p>
                     </div>
                     <div className="flex justify-between items-center py-3">

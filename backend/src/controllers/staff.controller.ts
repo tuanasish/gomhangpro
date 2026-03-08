@@ -186,7 +186,6 @@ export async function updateStaff(req: Request<{ id: string }, ApiResponse<Omit<
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (phone !== undefined) updateData.phone = phone || null;
-    if (role) updateData.role = role;
     if (isActive !== undefined) updateData.is_active = isActive;
     if (password) {
       if (password.length < 6) {
@@ -197,6 +196,21 @@ export async function updateStaff(req: Request<{ id: string }, ApiResponse<Omit<
         return;
       }
       updateData.password_hash = await hashPassword(password);
+    }
+
+    // Protect admin role: fetch current user to check their role
+    if (role) {
+      const { data: currentUser } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', id)
+        .single();
+
+      // Only allow role change if current user is NOT admin
+      if (currentUser?.role !== 'admin') {
+        updateData.role = role;
+      }
+      // If current user IS admin, silently ignore the role change
     }
 
     updateData.updated_at = new Date().toISOString();
@@ -318,7 +332,7 @@ export async function deleteStaff(req: Request<{ id: string }>, res: Response<Ap
     // khi xóa nhân viên, các hóa đơn của nhân viên đó sẽ có staff_id = NULL
     // nhưng hóa đơn vẫn được giữ lại (không bị xóa)
     // Các ca làm việc (shifts) sẽ tự động xóa do CASCADE
-    
+
     // Xóa nhân viên
     // Database sẽ tự động set staff_id = NULL cho các đơn hàng liên quan
     const { error } = await supabase.from('users').delete().eq('id', id);

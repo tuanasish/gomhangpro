@@ -222,31 +222,28 @@ export async function updateCustomer(
 }
 
 /**
- * Xóa khách hàng
+ * Xóa khách hàng (kèm xóa tất cả đơn hàng liên quan)
  */
 export async function deleteCustomer(req: Request<{ id: string }>, res: Response<ApiResponse>): Promise<void> {
   try {
     const { id } = req.params;
 
-    // Kiểm tra khách hàng có đang được sử dụng trong đơn hàng không
-    const { data: orders, error: checkError } = await supabase
+    // Xóa tất cả đơn hàng của khách hàng trước
+    const { error: deleteOrdersError } = await supabase
       .from('orders')
-      .select('id')
-      .eq('customer_id', id)
-      .limit(1);
+      .delete()
+      .eq('customer_id', id);
 
-    if (checkError) {
-      console.error('Check customer usage error:', checkError);
-    }
-
-    if (orders && orders.length > 0) {
-      res.status(409).json({
+    if (deleteOrdersError) {
+      console.error('Delete customer orders error:', deleteOrdersError);
+      res.status(500).json({
         success: false,
-        error: 'Không thể xóa khách hàng đang có đơn hàng',
+        error: 'Lỗi xóa đơn hàng của khách hàng. Vui lòng thử lại.',
       });
       return;
     }
 
+    // Xóa khách hàng
     const { error } = await supabase.from('customers').delete().eq('id', id);
 
     if (error) {
@@ -260,7 +257,7 @@ export async function deleteCustomer(req: Request<{ id: string }>, res: Response
 
     res.json({
       success: true,
-      message: 'Xóa khách hàng thành công',
+      message: 'Xóa khách hàng và các đơn hàng liên quan thành công',
     });
   } catch (error: any) {
     console.error('Delete customer error:', error);

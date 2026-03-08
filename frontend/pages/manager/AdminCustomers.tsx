@@ -130,10 +130,13 @@ const AdminCustomersPage: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     try {
+      // Trường address được dùng như "thuế mặc định" cho khách (lưu dạng chuỗi)
+      const defaultTaxRaw = formData.address.trim();
+
       await customersService.createCustomer({
         name: formData.name.trim(),
         phone: formData.phone.trim() || undefined,
-        address: formData.address.trim() || undefined,
+        address: defaultTaxRaw || undefined,
         defaultTienCongGom: formData.defaultTienCongGom ? Number(formData.defaultTienCongGom) : undefined,
       });
       await loadCustomers();
@@ -170,10 +173,12 @@ const AdminCustomersPage: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     try {
+      const defaultTaxRaw = formData.address.trim();
+
       await customersService.updateCustomer(editingCustomer.id, {
         name: formData.name.trim(),
         phone: formData.phone.trim() || undefined,
-        address: formData.address.trim() || undefined,
+        address: defaultTaxRaw || undefined,
         defaultTienCongGom: formData.defaultTienCongGom ? Number(formData.defaultTienCongGom) : undefined,
       });
       await loadCustomers();
@@ -381,7 +386,7 @@ const AdminCustomersPage: React.FC = () => {
                       <tr>
                         <th className="px-6 py-3" scope="col">Tên khách hàng</th>
                         <th className="px-6 py-3" scope="col">Số điện thoại</th>
-                        <th className="px-6 py-3" scope="col">Địa chỉ</th>
+                        <th className="px-6 py-3" scope="col">Thuế mặc định</th>
                         <th className="px-6 py-3" scope="col">Hóa đơn ({formatDateDisplay(selectedDate)})</th>
                         <th className="px-6 py-3" scope="col">Tổng tiền ({formatDateDisplay(selectedDate)})</th>
                         <th className="px-6 py-3" scope="col">Ngày tạo</th>
@@ -403,7 +408,11 @@ const AdminCustomersPage: React.FC = () => {
                               {customer.name}
                             </td>
                             <td className="px-6 py-4">{customer.phone || '-'}</td>
-                            <td className="px-6 py-4">{customer.address || '-'}</td>
+                            <td className="px-6 py-4">
+                              {customer.address
+                                ? `${Number(customer.address.replace(/[^\d]/g, '') || '0').toLocaleString('vi-VN')}đ`
+                                : '-'}
+                            </td>
                             <td className="px-6 py-4">
                               {loadingOrders ? (
                                 <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
@@ -476,7 +485,10 @@ const AdminCustomersPage: React.FC = () => {
                             )}
                             {customer.address && (
                               <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {customer.address}
+                                Thuế mặc định:{' '}
+                                <span className="font-semibold">
+                                  {Number(customer.address.replace(/[^\d]/g, '') || '0').toLocaleString('vi-VN')}đ
+                                </span>
                               </p>
                             )}
                             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -577,16 +589,21 @@ const AdminCustomersPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Địa chỉ
+                  Thuế mặc định (VNĐ)
                 </label>
                 <input
-                  type="text"
+                  type="number"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Nhập địa chỉ"
+                  placeholder="Nhập thuế mặc định cho khách"
                   className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-900 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary h-12 p-3 text-base font-normal leading-normal"
                   disabled={isSubmitting}
+                  min="0"
+                  step="1000"
                 />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Thuế này sẽ tự động điền vào cột Thuế khi tạo hóa đơn cho khách này.
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

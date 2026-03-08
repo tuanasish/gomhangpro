@@ -1,0 +1,53 @@
+{
+    "updated_at": "2026-03-08T23:09:00Z",
+    "working_on": {
+        "feature": "Save Brain & Handover",
+        "task": "Running the save brain workflow to conclude the session",
+        "status": "completed",
+        "files": [
+            "CHANGELOG.md",
+            ".brain/brain.json",
+            ".brain/session.json"
+        ],
+        "blockers": [],
+        "notes": "Finished fixing the printed invoice UI"
+    },
+    "pending_tasks": [
+        {
+            "task": "Test Android APK once build finishes",
+            "priority": "high",
+            "notes": "APK is currently building on EAS via preview profile"
+        }
+    ],
+    "recent_changes": [
+        {
+            "timestamp": "2026-03-08T23:05:00Z",
+            "type": "bugfix",
+            "description": "Fix bug backend không cho tạo hóa đơn giá trị 0đ. Sửa lỗi frontend in hóa đơn qua html2canvas bị lẹm viền dưới, cắt chữ, gạch biên, và thêm dòng TỔNG X ĐƠN.",
+            "files": [
+                "backend/src/controllers/orders.controller.ts",
+                "gomhangpro-app/src/screens/manager/CustomerDetailScreen.js",
+                "gomhangpro-app/src/screens/worker/OrderDetailScreen.js"
+            ]
+        },
+        {
+            "timestamp": "2026-03-08T23:00:00Z",
+            "type": "feature",
+            "description": "Deploy web dashboard lên gomhang.vercel.app frontend và gomhangprobackend.vercel.app backend",
+            "files": []
+        }
+    ],
+    "errors_encountered": [
+        {
+            "error": "Cannot read properties of undefined (reading 'scrollWidth')",
+            "solution": "Pass explicit scrollWidth inside setTimeout to ensure the hidden View renders fully before html2canvas capture process starts",
+            "resolved": true
+        }
+    ],
+    "decisions_made": [
+        {
+            "decision": "Manual SQL Migration over MCP",
+            "reason": "Supabase MCP was encountering user context auth issues, preferred raw SQL script run in dashboard."
+        }
+    ]
+}

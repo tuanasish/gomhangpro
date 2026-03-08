@@ -28,7 +28,7 @@ const corsOptions = {
       callback(null, true);
       return;
     }
-    
+
     // Allow localhost trong development
     const allowedOrigins = [
       'http://localhost:3000',
@@ -36,14 +36,14 @@ const corsOptions = {
       'http://127.0.0.1:3000',
       'http://127.0.0.1:5173',
     ];
-    
+
     // Nếu là production (có origin từ Vercel), cho phép tất cả
     // Hoặc bạn có thể whitelist cụ thể các domain Vercel
     if (origin.includes('vercel.app') || origin.includes('localhost')) {
       callback(null, true);
       return;
     }
-    
+
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -74,8 +74,8 @@ app.use((req, res, next) => {
 
 // Root endpoint
 app.get('/', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Gom Hàng Pro API is running',
     version: '1.0.0',
     endpoints: {
@@ -92,8 +92,8 @@ app.get('/', (req, res) => {
 
 // API info endpoint
 app.get('/api', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Gom Hàng Pro API is running',
     version: '1.0.0',
     endpoints: {
@@ -110,8 +110,8 @@ app.get('/api', (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Gom Hàng Pro API is running',
     timestamp: new Date().toISOString()
   });
@@ -124,12 +124,14 @@ import customersRoutes from './routes/customers.routes.js';
 import countersRoutes from './routes/counters.routes.js';
 import shiftsRoutes from './routes/shifts.routes.js';
 import ordersRoutes from './routes/orders.routes.js';
+import customerFeesRoutes from './routes/customer-fees.routes.js';
 app.use('/api/auth', authRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/customers', customersRoutes);
 app.use('/api/counters', countersRoutes);
 app.use('/api/shifts', shiftsRoutes);
 app.use('/api/orders', ordersRoutes);
+app.use('/api/customer-fees', customerFeesRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -167,7 +169,7 @@ if (!process.env.VERCEL) {
   app.listen(PORT, async () => {
     console.log(`🚀 Server is running on port ${PORT}`);
     console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
-    
+
     // Test Supabase connection if credentials are provided
     if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       try {
