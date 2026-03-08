@@ -13,7 +13,7 @@ const parseMoney = (val: any) => {
  */
 export async function getOrdersList(req: Request, res: Response<ApiResponse<Order[]>>): Promise<void> {
   try {
-    const { shiftId, customerId, date, status } = req.query;
+    const { shiftId, customerId, date, startDate, endDate, status } = req.query;
     const userId = (req as any).user?.userId;
     const userRole = (req as any).user?.role;
 
@@ -41,14 +41,23 @@ export async function getOrdersList(req: Request, res: Response<ApiResponse<Orde
     }
 
     if (date && typeof date === 'string') {
-      // Filter by date using Vietnam timezone (UTC+7)
-      const startDate = `${date}T00:00:00+07:00`;
-      const endDate = `${date}T23:59:59+07:00`;
-      query = query.gte('created_at', startDate).lte('created_at', endDate);
+      // Filter by single date using Vietnam timezone (UTC+7)
+      const start = `${date}T00:00:00+07:00`;
+      const end = `${date}T23:59:59+07:00`;
+      query = query.gte('created_at', start).lte('created_at', end);
+    } else if (startDate && typeof startDate === 'string') {
+      // Filter by date range
+      query = query.gte('created_at', `${startDate}T00:00:00+07:00`);
+      if (endDate && typeof endDate === 'string') {
+        query = query.lte('created_at', `${endDate}T23:59:59+07:00`);
+      }
     }
 
     if (status && typeof status === 'string') {
       query = query.eq('status', status);
+    } else {
+      // Mặc định loại bỏ đơn đã hủy khỏi danh sách
+      query = query.neq('status', 'cancelled');
     }
 
     const { data: orders, error } = await query;
@@ -168,6 +177,7 @@ export async function getOrdersByShift(req: Request<{ shiftId: string }>, res: R
         staff:users!orders_staff_id_fkey(id, name)
       `)
       .eq('shift_id', shiftId)
+      .neq('status', 'cancelled')
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -236,7 +246,21 @@ export async function createOrder(
   res: Response
 ): Promise<void> {
   try {
-    const { shiftId, customerId, customerName, customerPhone, counterId, counterName, tienHang, tienCongGom, phiDongHang, tienHoaHong = 0, tienThem = 0, loaiTienThem } = req.body;
+    const {
+      shiftId, customerId, customerName, customerPhone, counterId, counterName,
+      tienHang: rawTienHang,
+      tienCongGom: rawTienCongGom = 0,
+      phiDongHang: rawPhiDongHang = 0,
+      tienHoaHong: rawTienHoaHong = 0,
+      tienThem: rawTienThem = 0,
+      loaiTienThem
+    } = req.body;
+
+    const tienHang = parseMoney(rawTienHang);
+    const tienCongGom = parseMoney(rawTienCongGom);
+    const phiDongHang = parseMoney(rawPhiDongHang);
+    const tienHoaHong = parseMoney(rawTienHoaHong);
+    const tienThem = parseMoney(rawTienThem);
     const userId = (req as any).user?.userId;
 
     if (!userId) {
@@ -470,21 +494,23 @@ export async function updateOrder(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    const { status, tienHang, tienCongGom, phiDongHang, tienHoaHong, tienThem, loaiTienThem } = req.body;
+    const {
+      status,
+      tienHang: rawTienHang,
+      tienCongGom: rawTienCongGom,
+      phiDongHang: rawPhiDongHang,
+      tienHoaHong: rawTienHoaHong,
+      tienThem: rawTienThem,
+      loaiTienThem
+    } = req.body;
+
+    const tienHang = rawTienHang !== undefined ? parseMoney(rawTienHang) : undefined;
+    const tienCongGom = rawTienCongGom !== undefined ? parseMoney(rawTienCongGom) : undefined;
+    const phiDongHang = rawPhiDongHang !== undefined ? parseMoney(rawPhiDongHang) : undefined;
+    const tienHoaHong = rawTienHoaHong !== undefined ? parseMoney(rawTienHoaHong) : undefined;
+    const tienThem = rawTienThem !== undefined ? parseMoney(rawTienThem) : undefined;
     const userRole = (req as any).user?.role;
-
-    // Chỉ admin mới có quyền sửa các trường tiền
-    const isEditingMoneyFields = tienHang !== undefined || tienCongGom !== undefined ||
-      phiDongHang !== undefined || tienHoaHong !== undefined ||
-      tienThem !== undefined || loaiTienThem !== undefined;
-
-    if (isEditingMoneyFields && userRole !== 'admin') {
-      res.status(403).json({
-        success: false,
-        error: 'Chỉ admin mới có quyền sửa các trường tiền trong hóa đơn',
-      });
-      return;
-    }
+    const userId = (req as any).user?.userId;
 
     // Lấy đơn hàng hiện tại
     const { data: existingOrder, error: orderError } = await supabase
@@ -499,6 +525,24 @@ export async function updateOrder(
         error: 'Không tìm thấy đơn hàng',
       });
       return;
+    }
+
+    // Chỉ admin hoặc chính nhân viên tạo đơn mới có quyền sửa các trường tiền
+    const isEditingMoneyFields = tienHang !== undefined || tienCongGom !== undefined ||
+      phiDongHang !== undefined || tienHoaHong !== undefined ||
+      tienThem !== undefined || loaiTienThem !== undefined;
+
+    if (isEditingMoneyFields) {
+      const isAdmin = userRole === 'admin';
+      const isOwnerWorker = userRole === 'worker' && userId && existingOrder.staff_id === userId;
+
+      if (!isAdmin && !isOwnerWorker) {
+        res.status(403).json({
+          success: false,
+          error: 'Bạn không có quyền sửa các trường tiền trong hóa đơn này',
+        });
+        return;
+      }
     }
 
     const updateData: any = {};
