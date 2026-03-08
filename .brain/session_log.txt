@@ -1,9 +1,0 @@
-[16:37] START phase-02-react-query
-[16:37] DONE task: Install @tanstack/react-query
-[16:42] DONE task: Initialize queryClient
-[16:42] DONE task: Wrap App with QueryClientProvider
-[16:42] DONE task: Create custom hooks for useOrders and useShifts
-[16:42] END phase-02-react-query
-[17:00] START phase-03-tab-caching
-[17:06] DONE task: Refactor ManagerDashboardScreen.js
-[17:06] DONE task: Refactor ManagerOrdersScreen.js
