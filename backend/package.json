@@ -9,7 +9,7 @@
     "build": "npx tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "type-check": "tsc --noEmit",
-    "vercel-build": "npm install --include=dev && npm run build"
+    "vercel-build": "npm run build"
   },
   "keywords": [
     "api",
