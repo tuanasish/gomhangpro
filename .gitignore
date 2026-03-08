@@ -40,3 +40,22 @@ Thumbs.db
 *.sw?
 .vercel
 .env*.local
+
+# Sensitive keys and certificates
+*.p8
+*.pem
+*.key
+*.jks
+*.mobileprovision
+
+# AI and IDE context
+.brain/
+.cursor/
+
+# Temporary and design files
+*.js
+!eslint.config.js
+!prettier.config.js
+!commitlint.config.js
+image.png
+plan.txt
