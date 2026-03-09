@@ -69,8 +69,7 @@ export default function CreateOrderScreen() {
         setCustomerId('');
         if (val.trim().length >= 1) {
             const filtered = allCustomers.filter(c =>
-                c.name.toLowerCase().includes(val.toLowerCase()) ||
-                (c.phone && c.phone.includes(val))
+                c.name.toLowerCase().includes(val.toLowerCase())
             );
             setFilteredCustomers(filtered);
             setShowCustomerDropdown(true);

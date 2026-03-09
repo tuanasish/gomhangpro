@@ -81,7 +81,7 @@ export default function WorkerHomeScreen() {
             <View style={styles.header}>
                 <View style={styles.headerUser}>
                     <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{userInfo?.name?.charAt(0) || 'W'}</Text>
+                        <Ionicons name="person" size={24} color={theme.colors.primary.dark} />
                     </View>
                     <Text style={styles.userName}>{userInfo?.name || 'Nhân viên'}</Text>
                 </View>
@@ -133,7 +133,11 @@ export default function WorkerHomeScreen() {
                             <Text style={styles.emptyText}>Chưa có hóa đơn nào trong ca này.</Text>
                         ) : (
                             orders.map((order, index) => (
-                                <TouchableOpacity key={order.id} style={styles.orderItem}>
+                                <TouchableOpacity
+                                    key={order.id}
+                                    style={styles.orderItem}
+                                    onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
+                                >
                                     <View style={styles.orderLeft}>
                                         <View style={styles.orderIndex}>
                                             <Text style={styles.orderIndexText}>{index + 1}</Text>

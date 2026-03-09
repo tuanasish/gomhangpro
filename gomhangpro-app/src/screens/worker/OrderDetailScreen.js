@@ -6,7 +6,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
-import { getOrderByIdAPI, updateOrderAPI } from '../../api/orders';
+import { getOrderByIdAPI, updateOrderAPI, deleteOrderAPI } from '../../api/orders';
 const { spacing, typography, borderRadius } = theme;
 const colors = {
     background: theme.colors.background.light,
@@ -51,11 +51,13 @@ const OrderDetailScreen = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [editForm, setEditForm] = useState({
         tienHang: 0,
+        tienHoaHong: 0,
         tienCongGom: 0,
         phiDongHang: 0,
         tienThem: 0,
         loaiTienThem: '',
     });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const [thueStr, setThueStr] = useState('');
     const currentTienHang = Number(editForm.tienHang) || 0;
@@ -165,6 +167,7 @@ const OrderDetailScreen = () => {
             customerName: order.customerName || '',
             counterName: order.counterName || '',
             tienHang: order.tienHang || 0,
+            tienHoaHong: order.tienHoaHong || 0,
             tienCongGom: order.tienCongGom || 0,
             phiDongHang: order.phiDongHang || 0,
             tienThem: order.tienThem || 0,
@@ -193,6 +196,7 @@ const OrderDetailScreen = () => {
         if (!order) return;
 
         const tienHang = Number(editForm.tienHang) || 0;
+        const tienHoaHong = Number(editForm.tienHoaHong) || 0;
         const tienCongGom = Number(editForm.tienCongGom) || 0;
         const phiDongHang = Number(editForm.phiDongHang) || 0;
 
@@ -233,6 +237,7 @@ const OrderDetailScreen = () => {
                 customerName: editForm.customerName || null,
                 counterName: editForm.counterName || null,
                 tienHang,
+                tienHoaHong,
                 tienCongGom,
                 phiDongHang,
             };
@@ -259,6 +264,48 @@ const OrderDetailScreen = () => {
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const handleDeleteOrder = () => {
+        if (!order) return;
+
+        Alert.alert(
+            "Xác nhận xóa",
+            "Bạn có chắc chắn muốn xóa đơn hàng này? Thao tác này không thể hoàn tác.",
+            [
+                { text: "Hủy", style: "cancel" },
+                {
+                    text: "Xóa",
+                    style: "destructive",
+                    onPress: async () => {
+                        setIsDeleting(true);
+                        try {
+                            const response = await deleteOrderAPI(order.id);
+                            if (response && response.success) {
+                                if (Platform.OS === 'web') {
+                                    window.alert('Xóa đơn hàng thành công');
+                                } else {
+                                    Alert.alert('Thành công', 'Đã xóa đơn hàng');
+                                }
+                                navigation.goBack(); // Quay lại màn hình lịch sử
+                            } else {
+                                throw new Error(response?.error || 'Không thể xóa đơn hàng');
+                            }
+                        } catch (err) {
+                            console.error('Delete order error:', err);
+                            const errMsg = err.message || 'Có lỗi xảy ra khi xóa đơn hàng';
+                            if (Platform.OS === 'web') {
+                                window.alert(errMsg);
+                            } else {
+                                Alert.alert('Lỗi', errMsg);
+                            }
+                        } finally {
+                            setIsDeleting(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     if (loading) {
@@ -390,6 +437,18 @@ const OrderDetailScreen = () => {
                                     </View>
 
                                     <View style={styles.editFieldGroup}>
+                                        <Text style={styles.editLabel}>Hoa hồng (VNĐ)</Text>
+                                        <TextInput
+                                            keyboardType="numeric"
+                                            value={String(editForm.tienHoaHong)}
+                                            onChangeText={(text) =>
+                                                setEditForm((prev) => ({ ...prev, tienHoaHong: text.replace(/[^0-9]/g, '') }))
+                                            }
+                                            style={styles.input}
+                                        />
+                                    </View>
+
+                                    <View style={styles.editFieldGroup}>
                                         <Text style={styles.editLabel}>Phí gom (VNĐ)</Text>
                                         <TextInput
                                             keyboardType="numeric"
@@ -482,6 +541,13 @@ const OrderDetailScreen = () => {
                             disabled={isExportingImage || isSaving || !order}
                             variant="outline"
                             style={styles.actionButton}
+                        />
+                        <Button
+                            title="Xóa hóa đơn"
+                            onPress={handleDeleteOrder}
+                            loading={isDeleting}
+                            disabled={isExportingImage || isDeleting || isSaving || isEditing || !order}
+                            style={[styles.actionButton, { backgroundColor: '#ef4444' }]}
                         />
                         <Button
                             title="Xem trước hóa đơn"

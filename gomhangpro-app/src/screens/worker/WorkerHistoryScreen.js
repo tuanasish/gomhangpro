@@ -207,27 +207,57 @@ const WorkerHistoryScreen = () => {
                                             <View style={styles.cardBodyColumns}>
                                                 {/* Left column: staff & counter */}
                                                 <View style={styles.cardBodyLeft}>
-                                                    <View style={styles.infoRow}>
-                                                        <Ionicons name="person-outline" size={14} color="#8E8E93" />
-                                                        <Text style={styles.infoLabel}>NV:</Text>
-                                                        <Text style={styles.infoValue}>{order.staffName || '---'}</Text>
+                                                    <View style={[styles.infoRow, { marginBottom: 12 }]}>
+                                                        <Ionicons name="person-circle" size={20} color={theme.colors.primary.default} />
+                                                        <Text style={[styles.infoValue, { fontSize: 18, fontWeight: '700', color: theme.colors.primary.default }]} numberOfLines={1}>
+                                                            {order.staffName || '---'}
+                                                        </Text>
                                                     </View>
                                                     <View style={styles.infoRow}>
-                                                        <Ionicons name="storefront-outline" size={14} color="#8E8E93" />
-                                                        <Text style={styles.infoLabel}>Quầy:</Text>
-                                                        <Text style={styles.infoValue}>{order.counterName || '---'}</Text>
+                                                        <Ionicons name="storefront" size={18} color="#d97706" />
+                                                        <Text style={[styles.infoValue, { fontSize: 18, fontWeight: '700', color: '#d97706' }]} numberOfLines={1}>
+                                                            {order.counterName || '---'}
+                                                        </Text>
                                                     </View>
                                                 </View>
+
                                                 {/* Right column: financial details */}
                                                 <View style={styles.cardBodyRight}>
                                                     <View style={styles.moneyRow}>
                                                         <Text style={styles.moneyLabel}>Tiền hàng:</Text>
                                                         <Text style={styles.moneyValue}>{formatCurrency(order.tienHang || 0)}</Text>
                                                     </View>
-                                                    <View style={styles.moneyRow}>
-                                                        <Text style={styles.moneyLabel}>Tiền chi:</Text>
-                                                        <Text style={styles.moneyValue}>{formatCurrency((order.tongTienHoaDon || 0) - (order.tienHang || 0))}</Text>
-                                                    </View>
+
+                                                    {!!order.tienHoaHong && order.tienHoaHong > 0 && (
+                                                        <View style={styles.moneyRow}>
+                                                            <Text style={styles.moneyLabel}>Hoa hồng:</Text>
+                                                            <Text style={[styles.moneyValue, { color: '#059669' }]}>
+                                                                {formatCurrency(order.tienHoaHong)}
+                                                            </Text>
+                                                        </View>
+                                                    )}
+
+                                                    {!!order.tienCongGom && order.tienCongGom > 0 && (
+                                                        <View style={styles.moneyRow}>
+                                                            <Text style={styles.moneyLabel}>Phí gom:</Text>
+                                                            <Text style={styles.moneyValue}>{formatCurrency(order.tienCongGom)}</Text>
+                                                        </View>
+                                                    )}
+
+                                                    {!!order.phiDongHang && order.phiDongHang > 0 && (
+                                                        <View style={styles.moneyRow}>
+                                                            <Text style={styles.moneyLabel}>Phí đóng:</Text>
+                                                            <Text style={styles.moneyValue}>{formatCurrency(order.phiDongHang)}</Text>
+                                                        </View>
+                                                    )}
+
+                                                    {!!order.tienThem && order.tienThem > 0 && (
+                                                        <View style={styles.moneyRow}>
+                                                            <Text style={styles.moneyLabel}>{order.loaiTienThem || 'Thuế/Phí'}:</Text>
+                                                            <Text style={styles.moneyValue}>{formatCurrency(order.tienThem)}</Text>
+                                                        </View>
+                                                    )}
+
                                                     <View style={[styles.moneyRow, styles.totalRow]}>
                                                         <Text style={styles.totalLabel}>Tổng:</Text>
                                                         <Text style={styles.totalValue}>{formatCurrency(order.tongTienHoaDon || 0)}</Text>
@@ -402,7 +432,7 @@ const styles = StyleSheet.create({
     orderDate: {
         fontSize: 13,
         color: '#666',
-        marginTop: 2,
+        marginTop: 4,
     },
     statusBadgeWrapper: {
         alignSelf: 'flex-start',
@@ -417,7 +447,7 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     cardBodyLeft: {
-        flex: 1,
+        flex: 1.2, // Rộng hơn một chút để chứa text to
         justifyContent: 'center',
     },
     cardBodyRight: {
@@ -426,13 +456,14 @@ const styles = StyleSheet.create({
     infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 6,
-        gap: 4,
+        marginBottom: 10, // Giãn cách nhẹ
+        gap: 6,
     },
     infoLabel: {
         fontSize: 12,
         color: '#8E8E93',
         fontWeight: '500',
+        width: 38, // Cố định nhẹ độ rộng label để text NV/Quầy thẳng hàng
     },
     infoValue: {
         fontSize: 13,
@@ -444,27 +475,27 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 6, // Rộng rãi hơn 1 chút
     },
     moneyLabel: {
         fontSize: 12,
-        color: '#8E8E93',
+        color: '#666',
     },
     moneyValue: {
         fontSize: 13,
-        color: '#333',
+        color: '#111',
         fontWeight: '500',
     },
     totalRow: {
         borderTopWidth: 1,
         borderTopColor: '#E5E5EA',
-        paddingTop: 4,
-        marginTop: 2,
+        paddingTop: 6,
+        marginTop: 4,
     },
     totalLabel: {
-        fontSize: 13,
-        color: '#333',
-        fontWeight: '700',
+        fontSize: 14,
+        color: '#111',
+        fontWeight: 'bold',
     },
     totalValue: {
         fontWeight: 'bold',

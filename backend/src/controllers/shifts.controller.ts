@@ -752,10 +752,10 @@ export async function addMoneyToShift(req: Request, res: Response<ApiResponse<Sh
     const { amount, note } = req.body;
     const userId = (req as any).user?.id; // Lấy user ID từ middleware
 
-    if (!amount || typeof amount !== 'number' || amount <= 0) {
+    if (amount === undefined || amount === null || typeof amount !== 'number') {
       res.status(400).json({
         success: false,
-        error: 'Số tiền phải lớn hơn 0',
+        error: 'Vui lòng nhập số tiền hợp lệ',
       });
       return;
     }
@@ -1058,10 +1058,10 @@ export async function updateShiftMoneyAddition(
     // Cập nhật
     const updateData: any = {};
     if (amount !== undefined) {
-      if (typeof amount !== 'number' || amount <= 0) {
+      if (typeof amount !== 'number') {
         res.status(400).json({
           success: false,
-          error: 'Số tiền phải lớn hơn 0',
+          error: 'Vui lòng nhập số tiền hợp lệ',
         });
         return;
       }
