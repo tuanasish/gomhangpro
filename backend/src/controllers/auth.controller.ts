@@ -362,6 +362,17 @@ export async function refreshToken(req: Request<{}, ApiResponse<{ accessToken: s
     // Verify refresh token (already returns clean payload without JWT standard claims)
     const payload = verifyRefreshToken(token);
 
+    // Check if user still exists and is active
+    const { data: user, error: dbError } = await supabase
+      .from('users')
+      .select('id, is_active')
+      .eq('id', payload.userId)
+      .single();
+
+    if (dbError || !user || !user.is_active) {
+      throw new Error('User not found or inactive');
+    }
+
     // Generate new access token
     const newAccessToken = generateAccessToken(payload);
 
