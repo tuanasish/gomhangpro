@@ -185,27 +185,55 @@ const WorkerHistoryScreen = () => {
                                 {orders.map((order, index) => (
                                     <TouchableOpacity
                                         key={order.id}
-                                        style={styles.orderCard}
+                                        style={styles.card}
                                         onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
                                     >
-                                        <View style={styles.orderLeft}>
-                                            <View style={styles.orderIndexContainer}>
-                                                <View style={styles.orderIndexCircle}>
-                                                    <Text style={styles.orderIndexText}>{index + 1}</Text>
+                                        <View style={styles.cardHeader}>
+                                            <View>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                                    <View style={styles.orderIndexCircle}>
+                                                        <Text style={styles.orderIndexText}>{index + 1}</Text>
+                                                    </View>
+                                                    <Text style={styles.customerName}>Khách: {order.customerName}</Text>
                                                 </View>
-                                                <Text style={styles.orderTimeText}>{formatTime(order.createdAt)}</Text>
+                                                <Text style={styles.orderDate}>#{order.id.slice(0, 8).toUpperCase()} - {formatTime(order.createdAt)}</Text>
                                             </View>
-
-                                            <View style={styles.orderInfo}>
-                                                <Text style={styles.customerName}>Khách: {order.customerName}</Text>
-                                                <Text style={styles.orderSubtext}>
-                                                    Tổng tiền: <Text style={styles.orderHighlight}>{(order.tongTienHoaDon || 0).toLocaleString('vi-VN')}đ</Text>
-                                                </Text>
-                                                <Text style={styles.orderSubtext}>Tiền hàng: {(order.tienHang || 0).toLocaleString('vi-VN')}đ</Text>
+                                            <View style={styles.statusBadgeWrapper}>
+                                                {renderStatus(order.status)}
                                             </View>
                                         </View>
-                                        <View style={styles.orderRight}>
-                                            {renderStatus(order.status)}
+
+                                        <View style={styles.cardBody}>
+                                            <View style={styles.cardBodyColumns}>
+                                                {/* Left column: staff & counter */}
+                                                <View style={styles.cardBodyLeft}>
+                                                    <View style={styles.infoRow}>
+                                                        <Ionicons name="person-outline" size={14} color="#8E8E93" />
+                                                        <Text style={styles.infoLabel}>NV:</Text>
+                                                        <Text style={styles.infoValue}>{order.staffName || '---'}</Text>
+                                                    </View>
+                                                    <View style={styles.infoRow}>
+                                                        <Ionicons name="storefront-outline" size={14} color="#8E8E93" />
+                                                        <Text style={styles.infoLabel}>Quầy:</Text>
+                                                        <Text style={styles.infoValue}>{order.counterName || '---'}</Text>
+                                                    </View>
+                                                </View>
+                                                {/* Right column: financial details */}
+                                                <View style={styles.cardBodyRight}>
+                                                    <View style={styles.moneyRow}>
+                                                        <Text style={styles.moneyLabel}>Tiền hàng:</Text>
+                                                        <Text style={styles.moneyValue}>{formatCurrency(order.tienHang || 0)}</Text>
+                                                    </View>
+                                                    <View style={styles.moneyRow}>
+                                                        <Text style={styles.moneyLabel}>Tiền chi:</Text>
+                                                        <Text style={styles.moneyValue}>{formatCurrency((order.tongTienHoaDon || 0) - (order.tienHang || 0))}</Text>
+                                                    </View>
+                                                    <View style={[styles.moneyRow, styles.totalRow]}>
+                                                        <Text style={styles.totalLabel}>Tổng:</Text>
+                                                        <Text style={styles.totalValue}>{formatCurrency(order.tongTienHoaDon || 0)}</Text>
+                                                    </View>
+                                                </View>
+                                            </View>
                                         </View>
                                     </TouchableOpacity>
                                 ))}
@@ -334,67 +362,114 @@ const styles = StyleSheet.create({
         color: colors.gray900,
         marginBottom: spacing.md,
     },
-    orderCard: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        padding: spacing.md,
-        borderRadius: borderRadius.lg,
-        marginBottom: spacing.sm,
+    card: {
+        backgroundColor: '#FFF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
         borderWidth: 1,
         borderColor: colors.gray200,
     },
-    orderLeft: {
+    cardHeader: {
         flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    orderIndexContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: spacing.md,
-        width: 60,
+        justifyContent: 'space-between',
+        marginBottom: 16,
     },
     orderIndexCircle: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
         backgroundColor: colors.blue50,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 4,
+        marginRight: 8,
     },
     orderIndexText: {
         color: colors.primary,
         fontWeight: typography.weights.bold,
-        fontSize: typography.sizes.md,
-    },
-    orderTimeText: {
-        fontSize: typography.sizes.xs,
-        color: colors.gray500,
-        textAlign: 'center',
-    },
-    orderInfo: {
-        flex: 1,
+        fontSize: 12,
     },
     customerName: {
-        fontSize: typography.sizes.md,
-        fontWeight: typography.weights.semibold,
-        color: colors.gray900,
-        marginBottom: 2,
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#000',
     },
-    orderSubtext: {
-        fontSize: typography.sizes.sm,
-        color: colors.gray500,
-        marginBottom: 2,
+    orderDate: {
+        fontSize: 13,
+        color: '#666',
+        marginTop: 2,
     },
-    orderHighlight: {
-        fontWeight: typography.weights.medium,
-        color: colors.gray900,
+    statusBadgeWrapper: {
+        alignSelf: 'flex-start',
     },
-    orderRight: {
-        marginLeft: spacing.sm,
+    cardBody: {
+        borderTopWidth: 1,
+        borderTopColor: '#F2F2F7',
+        paddingTop: 12,
+    },
+    cardBodyColumns: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    cardBodyLeft: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    cardBodyRight: {
+        flex: 1,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 6,
+        gap: 4,
+    },
+    infoLabel: {
+        fontSize: 12,
+        color: '#8E8E93',
+        fontWeight: '500',
+    },
+    infoValue: {
+        fontSize: 13,
+        color: '#333',
+        fontWeight: '600',
+        flexShrink: 1,
+    },
+    moneyRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    moneyLabel: {
+        fontSize: 12,
+        color: '#8E8E93',
+    },
+    moneyValue: {
+        fontSize: 13,
+        color: '#333',
+        fontWeight: '500',
+    },
+    totalRow: {
+        borderTopWidth: 1,
+        borderTopColor: '#E5E5EA',
+        paddingTop: 4,
+        marginTop: 2,
+    },
+    totalLabel: {
+        fontSize: 13,
+        color: '#333',
+        fontWeight: '700',
+    },
+    totalValue: {
+        fontWeight: 'bold',
+        fontSize: 16,
+        color: theme?.colors?.primary?.default || '#007AFF',
     },
     statusBadge: {
         paddingHorizontal: spacing.sm,
