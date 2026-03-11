@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
@@ -44,6 +44,7 @@ const WorkerHistoryScreen = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [searchText, setSearchText] = useState('');
 
     useEffect(() => {
         loadOrders();
@@ -97,9 +98,17 @@ const WorkerHistoryScreen = () => {
         });
     };
 
+    const filteredOrders = useMemo(() => {
+        if (!searchText.trim()) return orders;
+        const lowerSearch = searchText.toLowerCase();
+        return orders.filter(order => 
+            (order.customerName && order.customerName.toLowerCase().includes(lowerSearch))
+        );
+    }, [orders, searchText]);
+
     const totalTienHang = useMemo(() => {
-        return orders.reduce((sum, order) => sum + order.tienHang, 0);
-    }, [orders]);
+        return filteredOrders.reduce((sum, order) => sum + order.tienHang, 0);
+    }, [filteredOrders]);
 
     const renderStatus = (status) => {
         switch (status) {
@@ -126,17 +135,35 @@ const WorkerHistoryScreen = () => {
             </View>
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {/* Date Filter */}
+                {/* Date & Search Filter */}
                 <View style={styles.filterContainer}>
-                    <Text style={styles.filterLabel}>Chọn ngày</Text>
-                    <TouchableOpacity
-                        style={styles.dateSelector}
-                        onPress={() => setShowDatePicker(true)}
-                    >
-                        <Ionicons name="calendar-outline" size={20} color={colors.gray500} />
-                        <Text style={styles.dateText}>{formatDateDisplay(selectedDate)}</Text>
-                        <Ionicons name="chevron-down" size={20} color={colors.gray400} />
-                    </TouchableOpacity>
+                    <View style={{ marginBottom: spacing.md }}>
+                        <Text style={styles.filterLabel}>Chọn ngày</Text>
+                        <TouchableOpacity
+                            style={styles.dateSelector}
+                            onPress={() => setShowDatePicker(true)}
+                        >
+                            <Ionicons name="calendar-outline" size={20} color={colors.gray500} />
+                            <Text style={styles.dateText}>{formatDateDisplay(selectedDate)}</Text>
+                            <Ionicons name="chevron-down" size={20} color={colors.gray400} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.searchContainer}>
+                        <Ionicons name="search" size={20} color={colors.gray400} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Tìm theo tên khách hàng..."
+                            value={searchText}
+                            onChangeText={setSearchText}
+                            clearButtonMode="while-editing"
+                        />
+                        {searchText.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchText('')} style={{ padding: 4 }}>
+                                <Ionicons name="close-circle" size={20} color={colors.gray400} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
 
                 {showDatePicker && (
@@ -163,11 +190,11 @@ const WorkerHistoryScreen = () => {
                 )}
 
                 {/* Thống kê ngày */}
-                {!loading && !error && orders.length > 0 && (
+                {!loading && !error && filteredOrders.length > 0 && (
                     <View style={styles.statsCard}>
                         <View style={styles.statsRow}>
                             <Text style={styles.statsLabel}>Tổng số hóa đơn:</Text>
-                            <Text style={styles.statsValue}>{orders.length} đơn</Text>
+                            <Text style={styles.statsValue}>{filteredOrders.length} đơn</Text>
                         </View>
                         <View style={styles.statsRow}>
                             <Text style={styles.statsLabel}>Tổng tiền hàng:</Text>
@@ -179,10 +206,10 @@ const WorkerHistoryScreen = () => {
                 {/* Danh sách hóa đơn */}
                 {!loading && !error && (
                     <View style={styles.listContainer}>
-                        {orders.length > 0 ? (
+                        {filteredOrders.length > 0 ? (
                             <>
                                 <Text style={styles.listTitle}>Hóa đơn ngày {formatDateDisplay(selectedDate)}</Text>
-                                {orders.map((order, index) => (
+                                {filteredOrders.map((order, index) => (
                                     <TouchableOpacity
                                         key={order.id}
                                         style={styles.card}
@@ -272,7 +299,7 @@ const WorkerHistoryScreen = () => {
                             <View style={styles.emptyContainer}>
                                 <Ionicons name="receipt-outline" size={64} color={colors.gray300} />
                                 <Text style={styles.emptyTitle}>Không có hóa đơn nào</Text>
-                                <Text style={styles.emptySubtext}>Chọn ngày khác để xem lịch sử hóa đơn</Text>
+                                <Text style={styles.emptySubtext}>{searchText ? 'Không tìm thấy khách hàng phù hợp' : 'Chọn ngày khác để xem lịch sử hóa đơn'}</Text>
                             </View>
                         )}
                     </View>
@@ -329,6 +356,21 @@ const styles = StyleSheet.create({
         borderRadius: borderRadius.md,
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm,
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.gray100,
+        borderRadius: borderRadius.md,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 8,
+    },
+    searchInput: {
+        flex: 1,
+        marginLeft: spacing.sm,
+        fontSize: typography.sizes.md,
+        color: colors.gray900,
+        paddingVertical: 0,
     },
     dateText: {
         flex: 1,
